@@ -7,7 +7,7 @@ const DEFAULTS = {
   llmMode: 'local',
   ollamaModel: 'mistral',
   ollamaEndpoint: 'http://localhost:11434',
-  whisperEndpoint: 'http://localhost:5555',
+  whisperModel: 'tiny',
   openaiApiKey: '',
   groqApiKey: '',
   openrouterApiKey: '',
@@ -24,7 +24,7 @@ chrome.storage.local.get(DEFAULTS, (settings) => {
   $('#llm-mode').value = settings.llmMode;
   $('#ollama-endpoint').value = settings.ollamaEndpoint;
   $('#ollama-model').value = settings.ollamaModel;
-  $('#whisper-endpoint').value = settings.whisperEndpoint;
+  $('#whisper-model').value = settings.whisperModel;
   $('#openai-key').value = settings.openaiApiKey;
   $('#groq-key').value = settings.groqApiKey;
   $('#openrouter-key').value = settings.openrouterApiKey;
@@ -88,36 +88,98 @@ async function checkOllama() {
   }
 }
 
-// ── Check Whisper Server ───────────────────────────
-$('#check-whisper').addEventListener('click', checkWhisper);
+// ── Check On-Device Whisper Model ──────────────────
+$('#check-whisper').addEventListener('click', checkWhisperModel);
 
-async function checkWhisper() {
+async function checkWhisperModel() {
   const statusBadge = $('#whisper-status');
   const statusText = statusBadge.querySelector('.status-text');
   statusText.textContent = 'Checking...';
   statusBadge.className = 'status-badge';
 
   try {
-    const endpoint = $('#whisper-endpoint').value || 'http://localhost:5555';
-    const response = await fetch(`${endpoint}/health`);
+    const response = await chrome.runtime.sendMessage({ type: 'CHECK_WHISPER' });
     
-    if (response.ok) {
-      const data = await response.json();
-      statusBadge.classList.add('connected');
-      statusText.textContent = `Connected — Whisper model: ${data.model || 'base'}`;
+    if (response && response.available) {
+      if (response.loaded) {
+        statusBadge.classList.add('connected');
+        statusText.textContent = `Model loaded: whisper-${response.model}`;
+      } else if (response.isLoading) {
+        statusBadge.classList.add('connected');
+        statusText.textContent = 'Model is loading...';
+      } else {
+        statusBadge.classList.add('connected');
+        statusText.textContent = 'Engine ready — model will load on first use';
+      }
     } else {
       statusBadge.classList.add('disconnected');
-      statusText.textContent = 'Whisper server not responding';
+      statusText.textContent = 'Whisper engine not initialized';
     }
   } catch {
     statusBadge.classList.add('disconnected');
-    statusText.textContent = 'Cannot reach Whisper server. Run start.bat first.';
+    statusText.textContent = 'Could not check model status';
+  }
+}
+
+// ── Download Whisper Model ─────────────────────────
+$('#download-whisper').addEventListener('click', downloadWhisperModel);
+
+async function downloadWhisperModel() {
+  const modelSize = $('#whisper-model').value;
+  const progressRow = $('#whisper-progress');
+  const progressBar = $('#whisper-progress-bar');
+  const progressText = $('#whisper-progress-text');
+  const statusBadge = $('#whisper-status');
+  const statusText = statusBadge.querySelector('.status-text');
+
+  progressRow.classList.remove('hidden');
+  progressBar.style.width = '0%';
+  progressText.textContent = `Downloading whisper-${modelSize} model...`;
+  statusText.textContent = 'Downloading...';
+  statusBadge.className = 'status-badge';
+
+  // Listen for progress updates
+  const progressListener = (message) => {
+    if (message.type === 'WHISPER_PROGRESS') {
+      if (message.progress.status === 'progress') {
+        const pct = Math.round(message.progress.percent || 0);
+        progressBar.style.width = pct + '%';
+        progressText.textContent = `Downloading: ${pct}%`;
+      } else if (message.progress.status === 'ready') {
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Model cached and ready!';
+        statusBadge.classList.add('connected');
+        statusText.textContent = `Model loaded: whisper-${message.progress.model}`;
+        setTimeout(() => progressRow.classList.add('hidden'), 3000);
+        chrome.runtime.onMessage.removeListener(progressListener);
+      }
+    }
+  };
+  chrome.runtime.onMessage.addListener(progressListener);
+
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'LOAD_WHISPER_MODEL',
+      modelSize
+    });
+
+    if (response && !response.success) {
+      progressText.textContent = `Error: ${response.error}`;
+      statusBadge.classList.add('disconnected');
+      statusText.textContent = 'Download failed';
+      chrome.runtime.onMessage.removeListener(progressListener);
+    }
+  } catch (err) {
+    progressText.textContent = `Error: ${err.message}`;
+    statusBadge.classList.add('disconnected');
+    statusText.textContent = 'Download failed';
+    chrome.runtime.onMessage.removeListener(progressListener);
   }
 }
 
 // Initial checks
 setTimeout(checkOllama, 500);
-setTimeout(checkWhisper, 800);
+setTimeout(checkWhisperModel, 800);
 
 // ── Toggle Password Visibility ─────────────────────
 document.querySelectorAll('.toggle-visibility').forEach(btn => {
@@ -135,7 +197,7 @@ $('#save-btn').addEventListener('click', () => {
     llmMode: $('#llm-mode').value,
     ollamaEndpoint: $('#ollama-endpoint').value,
     ollamaModel: $('#ollama-model').value,
-    whisperEndpoint: $('#whisper-endpoint').value,
+    whisperModel: $('#whisper-model').value,
     openaiApiKey: $('#openai-key').value,
     groqApiKey: $('#groq-key').value,
     openrouterApiKey: $('#openrouter-key').value,

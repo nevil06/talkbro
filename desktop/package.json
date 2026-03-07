@@ -1,0 +1,37 @@
+{
+  "name": "talkbro-desktop",
+  "version": "1.0.0",
+  "description": "TalkBro — System-wide voice typing assistant powered by on-device Whisper",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.talkbro.desktop",
+    "productName": "TalkBro",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.png"
+    },
+    "files": [
+      "**/*",
+      "../lib/transformers/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../lib/transformers",
+        "to": "transformers"
+      }
+    ]
+  }
+}

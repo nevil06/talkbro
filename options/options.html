@@ -29,7 +29,7 @@
       <div class="setting-row">
         <label for="stt-mode">Transcription Mode</label>
         <select id="stt-mode">
-          <option value="local">Local (Whisper Server — free, private, best accuracy)</option>
+          <option value="local">On-Device (Whisper — free, private, runs in browser)</option>
           <option value="remote">Remote (OpenAI Whisper API — no setup needed)</option>
         </select>
       </div>
@@ -37,16 +37,26 @@
       <!-- Local Whisper Server Settings -->
       <div id="whisper-settings">
         <div class="setting-row">
-          <label for="whisper-endpoint">Whisper Server Endpoint</label>
-          <input type="url" id="whisper-endpoint" placeholder="http://localhost:5555" value="http://localhost:5555">
-          <span class="hint">Run <code>start.bat</code> in the <code>whisper-server/</code> folder to start the server.</span>
+          <label for="whisper-model">Whisper Model Size</label>
+          <select id="whisper-model">
+            <option value="tiny">Tiny (~39 MB — fastest, good accuracy)</option>
+            <option value="base">Base (~74 MB — better accuracy)</option>
+          </select>
+          <span class="hint">Model downloads on first use and is cached locally for instant future use.</span>
         </div>
         <div class="setting-row">
           <div id="whisper-status" class="status-badge">
             <span class="status-dot"></span>
-            <span class="status-text">Checking Whisper server...</span>
+            <span class="status-text">Checking model status...</span>
           </div>
-          <button id="check-whisper" class="btn-secondary">Check Connection</button>
+          <button id="check-whisper" class="btn-secondary">Check Model</button>
+          <button id="download-whisper" class="btn-secondary" style="margin-left:6px">Download & Cache</button>
+        </div>
+        <div id="whisper-progress" class="setting-row hidden">
+          <div style="width:100%; height:6px; background:var(--bg); border-radius:3px; overflow:hidden;">
+            <div id="whisper-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, var(--accent), #a78bfa); border-radius:3px; transition:width 0.3s;"></div>
+          </div>
+          <span id="whisper-progress-text" class="hint" style="margin-top:4px">Downloading model...</span>
         </div>
       </div>
 

@@ -4,11 +4,11 @@
  */
 
 const DEFAULTS = {
-  sttMode: 'local',         // 'local' (Whisper server) or 'remote' (OpenAI API)
+  sttMode: 'local',         // 'local' (on-device Whisper) or 'remote' (OpenAI API)
   llmMode: 'local',         // 'local' (Ollama) or 'remote' (Groq/OpenRouter)
   ollamaModel: 'mistral',
   ollamaEndpoint: 'http://localhost:11434',
-  whisperEndpoint: 'http://localhost:5555',
+  whisperModel: 'tiny',     // 'tiny' (~39MB) or 'base' (~74MB)
   openaiApiKey: '',
   groqApiKey: '',
   openrouterApiKey: '',
@@ -16,6 +16,7 @@ const DEFAULTS = {
   silenceTimeout: 2000,        // ms of silence before auto-stop
   theme: 'auto',               // auto | dark | light
   panelPosition: { x: null, y: null },
+  disabledSites: [],           // domain list where TalkBro is hidden
   history: []
 };
 

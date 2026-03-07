@@ -11,8 +11,13 @@
   ],
   "host_permissions": [
     "http://localhost:11434/*",
-    "http://localhost:5555/*"
+    "http://localhost:5555/*",
+    "https://huggingface.co/*",
+    "https://cdn-lfs.huggingface.co/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
   "background": {
     "service_worker": "background/service-worker.js",
     "type": "module"
@@ -61,7 +66,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["content/panel.html", "content/panel.css", "content/panel.js", "assets/fonts/*", "assets/sounds/*"],
+      "resources": ["content/panel.html", "content/panel.css", "content/panel.js", "assets/fonts/*", "assets/sounds/*", "lib/transformers/*", "offscreen/offscreen.html"],
       "matches": ["<all_urls>"]
     }
   ]

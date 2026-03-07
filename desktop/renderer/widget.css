@@ -1,0 +1,165 @@
+/* ══════════════════════════════════════════════════════
+   TalkBro Desktop — Floating Widget Styles
+   ══════════════════════════════════════════════════════ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Widget Container ────────────────────────────── */
+.widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  -webkit-app-region: drag;  /* Entire widget is draggable */
+}
+
+/* ── Mic Button ──────────────────────────────────── */
+.mic-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(124, 92, 252, 0.4);
+  background: rgba(15, 15, 30, 0.92);
+  backdrop-filter: blur(20px);
+  color: #a78bfa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  -webkit-app-region: no-drag;  /* Button itself is clickable, not draggable */
+  position: relative;
+}
+
+.mic-btn svg {
+  width: 24px;
+  height: 24px;
+  transition: all 0.3s;
+}
+
+.mic-btn:hover {
+  transform: scale(1.1);
+  border-color: #7c5cfc;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(124, 92, 252, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  color: #c4b5fd;
+}
+
+.mic-btn:active {
+  transform: scale(0.95);
+}
+
+/* ── Idle State ──────────────────────────────────── */
+.widget.idle .mic-btn {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* ── Recording State ─────────────────────────────── */
+.widget.recording .mic-btn {
+  background: rgba(220, 38, 38, 0.9);
+  border-color: rgba(248, 113, 113, 0.6);
+  color: white;
+  animation: pulse-record 1.5s ease-in-out infinite;
+  box-shadow:
+    0 4px 24px rgba(220, 38, 38, 0.4),
+    0 0 30px rgba(248, 113, 113, 0.2);
+}
+
+@keyframes pulse-record {
+  0%, 100% {
+    box-shadow: 0 4px 24px rgba(220, 38, 38, 0.4), 0 0 30px rgba(248, 113, 113, 0.2);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 32px rgba(220, 38, 38, 0.6), 0 0 50px rgba(248, 113, 113, 0.3);
+    transform: scale(1.05);
+  }
+}
+
+/* ── Processing State ────────────────────────────── */
+.widget.processing .mic-btn {
+  background: rgba(15, 15, 30, 0.95);
+  border-color: rgba(124, 92, 252, 0.6);
+  color: #7c5cfc;
+  pointer-events: none;
+}
+
+.widget.processing #mic-icon { display: none; }
+.widget.processing .spinner { display: block; }
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  animation: spin 1s linear infinite;
+}
+
+.spinner.hidden { display: none; }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Status Text ─────────────────────────────────── */
+.status {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a78bfa;
+  background: rgba(15, 15, 30, 0.88);
+  backdrop-filter: blur(12px);
+  padding: 4px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(124, 92, 252, 0.2);
+  white-space: nowrap;
+  animation: fadeIn 0.2s ease;
+}
+
+.status.hidden { display: none; }
+
+.widget.recording .status { color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
+.widget.processing .status { color: #a78bfa; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* ── Waveform Canvas ─────────────────────────────── */
+.waveform {
+  width: 180px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(15, 15, 30, 0.7);
+  border: 1px solid rgba(124, 92, 252, 0.15);
+}
+
+.waveform.hidden { display: none; }
+
+/* ── Recording dot indicator ─────────────────────── */
+.widget.recording .status::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #f87171;
+  border-radius: 50%;
+  margin-right: 6px;
+  animation: blink 1s infinite;
+  vertical-align: middle;
+}
+
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }

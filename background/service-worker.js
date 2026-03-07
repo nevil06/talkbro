@@ -53,6 +53,40 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.type === 'SAVE_POSITION') {
+    chrome.storage.local.set({ panelPosition: message.position });
+    return;
+  }
+
+  if (message.type === 'DISABLE_SITE') {
+    getSettings().then(s => {
+      const sites = s.disabledSites || [];
+      if (!sites.includes(message.domain)) {
+        sites.push(message.domain);
+        chrome.storage.local.set({ disabledSites: sites });
+      }
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (message.type === 'ENABLE_SITE') {
+    getSettings().then(s => {
+      const sites = (s.disabledSites || []).filter(d => d !== message.domain);
+      chrome.storage.local.set({ disabledSites: sites });
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (message.type === 'CHECK_SITE') {
+    getSettings().then(s => {
+      const disabled = (s.disabledSites || []).includes(message.domain);
+      sendResponse({ disabled });
+    });
+    return true;
+  }
+
   if (message.type === 'OPEN_OPTIONS') {
     chrome.runtime.openOptionsPage();
     return;
@@ -66,10 +100,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.type === 'CHECK_WHISPER') {
-    checkWhisperServer()
+    checkLocalWhisper()
       .then(result => sendResponse(result))
       .catch(() => sendResponse({ available: false }));
     return true;
+  }
+
+  if (message.type === 'LOAD_WHISPER_MODEL') {
+    ensureOffscreen()
+      .then(() => chrome.runtime.sendMessage({ target: 'offscreen', type: 'WHISPER_LOAD_MODEL', modelSize: message.modelSize || 'tiny' }))
+      .then(result => sendResponse(result))
+      .catch(err => sendResponse({ success: false, error: err.message }));
+    return true;
+  }
+
+  // Forward progress from offscreen to any listening tabs
+  if (message.type === 'WHISPER_PROGRESS') {
+    // Broadcast to all tabs
+    chrome.tabs.query({}, (tabs) => {
+      tabs.forEach(tab => {
+        chrome.tabs.sendMessage(tab.id, message).catch(() => {});
+      });
+    });
+    return;
   }
 });
 
@@ -89,53 +142,42 @@ async function handleEnhance(rawText, preset) {
 }
 
 /**
- * Transcribe audio — routes to local Whisper server or OpenAI API based on settings.
+ * Transcribe audio — routes to on-device Whisper (offscreen) or OpenAI API.
  */
 async function handleTranscribe(audioData) {
   const settings = await getSettings();
 
-  // Convert base64 back to blob
-  const binaryString = atob(audioData.base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  const blob = new Blob([bytes], { type: audioData.mimeType });
-
   if (settings.sttMode === 'local') {
-    // ── Local Whisper Server (localhost:5555) ──
-    const endpoint = settings.whisperEndpoint || 'http://localhost:5555';
-    const formData = new FormData();
-    formData.append('file', blob, 'recording.webm');
+    // ── On-Device Whisper via Offscreen Document ──
+    await ensureOffscreen();
 
-    try {
-      const response = await fetch(`${endpoint}/transcribe`, {
-        method: 'POST',
-        body: formData
-      });
+    const response = await chrome.runtime.sendMessage({
+      target: 'offscreen',
+      type: 'WHISPER_TRANSCRIBE',
+      audioData: {
+        base64: audioData.base64,
+        mimeType: audioData.mimeType,
+        modelSize: settings.whisperModel || 'tiny'
+      }
+    });
 
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Whisper server error (${response.status}): ${err}`);
-      }
-
-      const data = await response.json();
-      if (data.success && data.text) {
-        return data.text;
-      }
-      throw new Error(data.error || 'No transcript returned');
-    } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        throw new Error('Cannot reach Whisper server. Run start.bat in the whisper-server folder.');
-      }
-      throw err;
+    if (response && response.success) {
+      return response.text;
     }
+    throw new Error(response?.error || 'On-device transcription failed');
 
   } else {
     // ── Remote OpenAI Whisper API ──
     if (!settings.openaiApiKey) {
       throw new Error('OpenAI API key required for remote transcription. Set it in TalkBro settings.');
     }
+
+    const binaryString = atob(audioData.base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: audioData.mimeType });
 
     const formData = new FormData();
     formData.append('file', blob, 'recording.webm');
@@ -239,27 +281,145 @@ async function checkOllamaAvailability() {
   }
 }
 
-async function checkWhisperServer() {
+async function checkLocalWhisper() {
   try {
-    const settings = await getSettings();
-    const endpoint = settings.whisperEndpoint || 'http://localhost:5555';
-    const response = await fetch(`${endpoint}/health`);
-    if (!response.ok) return { available: false };
-    const data = await response.json();
-    return { available: true, model: data.model };
+    await ensureOffscreen();
+    const result = await chrome.runtime.sendMessage({
+      target: 'offscreen',
+      type: 'WHISPER_STATUS'
+    });
+    return {
+      available: true,
+      loaded: result?.loaded || false,
+      model: result?.model || null,
+      isLoading: result?.isLoading || false
+    };
   } catch {
     return { available: false };
   }
 }
 
+// ── Offscreen Document Management ─────────────────────
+let creatingOffscreen = null;
+
+async function ensureOffscreen() {
+  const exists = await chrome.offscreen.hasDocument?.() || false;
+  if (exists) return;
+
+  if (creatingOffscreen) {
+    await creatingOffscreen;
+    return;
+  }
+
+  creatingOffscreen = chrome.offscreen.createDocument({
+    url: 'offscreen/offscreen.html',
+    reasons: ['WORKERS'],
+    justification: 'Run Whisper speech-to-text model on-device via Transformers.js'
+  });
+
+  await creatingOffscreen;
+  creatingOffscreen = null;
+}
+
 function getPreset(key) {
   const presets = {
-    clean: { name: 'Clean Up', prompt: 'Clean up this spoken text: fix grammar, remove filler words (um, uh, like, you know), fix punctuation, and make it read naturally. Preserve the original meaning and tone. Return ONLY the cleaned text, no explanations.' },
-    formal: { name: 'Formal', prompt: 'Rewrite this spoken text in a formal, professional tone. Fix grammar, improve vocabulary, and structure it properly. Return ONLY the rewritten text, no explanations.' },
-    bullets: { name: 'Bullet Points', prompt: 'Convert this spoken text into clear, organized bullet points. Group related ideas together. Return ONLY the bullet points, no explanations.' },
-    email: { name: 'Email', prompt: 'Convert this spoken text into a well-structured professional email. Include appropriate greeting and closing. Return ONLY the email text, no explanations.' },
-    code: { name: 'Code Explanation', prompt: 'The user is explaining code or a technical concept verbally. Clean up the text, add proper technical terminology, and format it as clear technical documentation. Return ONLY the formatted text, no explanations.' },
-    summary: { name: 'Summary', prompt: 'Summarize this spoken text into a concise paragraph capturing all key points. Return ONLY the summary, no explanations.' }
+    clean: {
+      name: 'Clean Up',
+      prompt: `You are an expert text editor specializing in cleaning up spoken transcripts. Your task:
+
+1. Remove ALL filler words: "um", "uh", "like", "you know", "I mean", "sort of", "kind of", "basically", "actually", "right", "so yeah", "well"
+2. Fix grammar, spelling, and punctuation thoroughly
+3. Break run-on sentences into clear, properly punctuated sentences
+4. Remove false starts, self-corrections, and repeated words/phrases
+5. Preserve the speaker's original meaning, intent, and natural voice — do NOT change what they said, only HOW it reads
+6. Keep contractions if the tone is casual; expand them if the tone is professional
+7. Maintain the original paragraph structure — add paragraph breaks only where there's a clear topic shift
+
+Output ONLY the cleaned text. No commentary, no labels, no quotation marks around the output.`
+    },
+    formal: {
+      name: 'Formal',
+      prompt: `You are a professional writing coach. Transform this spoken text into polished, formal writing:
+
+1. Elevate vocabulary — replace casual words with precise, professional alternatives (e.g., "get" → "obtain", "big" → "significant", "a lot" → "considerably")
+2. Use complete sentences with proper subordinate clauses and transitions
+3. Remove ALL slang, colloquialisms, filler words, and contractions
+4. Structure into clear paragraphs with logical flow: topic sentence → supporting details → transition
+5. Use active voice where possible; passive voice only when the object is more important than the subject
+6. Ensure subject-verb agreement, proper tense consistency, and parallel structure
+7. Add appropriate transition words between ideas (however, furthermore, consequently, moreover)
+8. Preserve every piece of information and intent from the original — do NOT add new information or opinions
+
+Output ONLY the formal rewrite. No meta-commentary, no "Here is the rewritten text:" prefix.`
+    },
+    bullets: {
+      name: 'Bullet Points',
+      prompt: `You are an expert at organizing information into clear, actionable bullet points. Transform this spoken text:
+
+1. Extract every distinct idea, fact, or action item from the spoken text
+2. Group related points under clear, bold section headers if there are multiple topics
+3. Use "•" for main points, "  –" for sub-points
+4. Each bullet should be one concise, complete thought (5-15 words ideal)
+5. Start each bullet with a strong verb or key noun — no "I think" or "We should maybe"
+6. Order points logically: by priority, chronologically, or by category
+7. Remove all filler, hedging language, and redundancy
+8. If there are action items, mark them clearly
+9. Do NOT omit any substantive information from the original
+
+Output ONLY the bullet points. No intro sentence, no summary at the end.`
+    },
+    email: {
+      name: 'Email',
+      prompt: `You are a professional email writer. Convert this spoken text into a polished, well-structured email:
+
+1. Add an appropriate greeting: "Hi [Name]," if a name is mentioned, otherwise "Hi," or "Hello,"
+2. Write a clear opening line that states the purpose immediately (no "I hope this email finds you well" unless context demands it)
+3. Organize the body into short paragraphs (2-4 sentences each):
+   - Paragraph 1: Context/purpose
+   - Middle paragraphs: Details, requests, or information
+   - Final paragraph: Clear next steps or call to action
+4. Use professional but warm tone — not stiff or robotic
+5. If there are multiple requests or items, use a numbered list
+6. End with an appropriate closing: "Best regards," / "Thanks," / "Best," depending on the formality
+7. Add "[Your Name]" as the sign-off placeholder
+8. Keep it concise — busy people skim emails
+9. If a subject line is obvious from the content, suggest one as: "Subject: ..."
+
+Output ONLY the email text (with subject line if applicable). No explanations.`
+    },
+    code: {
+      name: 'Code Explanation',
+      prompt: `You are a senior technical writer. The user is verbally explaining code, a technical concept, or a development task. Transform their speech into clear technical documentation:
+
+1. Use proper technical terminology — replace vague descriptions with precise terms (e.g., "that thing that stores data" → "the database", "it goes through each one" → "iterates over the collection")
+2. Format code references with backtick notation: \`functionName()\`, \`variableName\`, \`ClassName\`
+3. Structure as:
+   - Brief overview (1-2 sentences)
+   - Technical details with proper formatting
+   - Step-by-step process if describing a workflow
+4. Use precise language: "invokes", "returns", "accepts", "initializes", "propagates" instead of casual equivalents
+5. If describing an algorithm or process, use numbered steps
+6. If mentioning parameters, types, or return values, format them clearly
+7. Remove all filler words, false starts, and verbal thinking ("so basically what happens is...")
+8. Preserve ALL technical information — do not simplify or omit technical details
+
+Output ONLY the technical documentation. No preamble.`
+    },
+    summary: {
+      name: 'Summary',
+      prompt: `You are an expert summarizer. Condense this spoken text into a clear, comprehensive summary:
+
+1. Capture ALL key points, decisions, action items, and important details — omit nothing substantive
+2. Write 2-4 concise sentences for short content, up to a short paragraph for longer content
+3. Lead with the most important point or main conclusion
+4. Use specific details and numbers from the original (don't generalize "several" if they said "three")
+5. Maintain the speaker's intent and emphasis — if they stressed something, it should be prominent in the summary
+6. Remove all filler, tangents, anecdotes, and repetition
+7. Use clear, direct language — every word should earn its place
+8. If there are action items or next steps, include them at the end
+
+Output ONLY the summary. No "In summary:" prefix or meta-commentary.`
+    }
   };
   return presets[key] || presets.clean;
 }

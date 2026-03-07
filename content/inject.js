@@ -1,23 +1,44 @@
 /**
- * TalkBro — Content Script (fully self-contained)
- * All HTML, CSS, and JS inline — guaranteed to render.
+ * TalkBro — Smart Content Script
+ * Features: domain-based disable, input field detection, context menu,
+ *           draggable widget, smooth animations, tab-specific hide.
  */
 
 (function () {
   'use strict';
-  console.log('%c[TalkBro] Content script loaded', 'color:#7c5cfc;font-weight:bold');
 
-  // ── CSS (must be defined BEFORE init() is called) ──
+  // ── CSS ─────────────────────────────────────────────
   const CSS_TEXT = `
     * { box-sizing:border-box; margin:0; padding:0; }
 
-    .tb { font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; color:#e8e8f0; line-height:1.5; }
-    .tb-pill { display:flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(15,15,25,0.95); border:1px solid rgba(255,255,255,0.12); border-radius:50px; color:#e8e8f0; font-size:13px; font-weight:600; cursor:pointer; box-shadow:0 8px 32px rgba(0,0,0,0.5); transition:all 0.25s; user-select:none; }
-    .tb-pill:hover { transform:scale(1.05); border-color:#7c5cfc; box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 20px rgba(124,92,252,0.3); }
-    .tb-pill svg { width:18px; height:18px; color:#7c5cfc; flex-shrink:0; }
+    :host { opacity:0; transition:opacity 0.4s ease; }
+    :host(.visible) { opacity:1; }
+    :host(.tb-dragging) * { cursor:grabbing !important; }
 
-    .tb-panel { display:none; flex-direction:column; width:370px; max-height:540px; background:rgba(15,15,25,0.95); border:1px solid rgba(255,255,255,0.12); border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5); overflow:hidden; animation:tbIn 0.3s ease; }
-    @keyframes tbIn { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:none} }
+    .tb { font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; color:#e8e8f0; line-height:1.5; }
+
+    /* ── Pill ────────────────────────────────────────── */
+    .tb-pill { display:flex; align-items:center; gap:8px; padding:10px 18px; background:rgba(15,15,25,0.95); border:1px solid rgba(255,255,255,0.12); border-radius:50px; color:#e8e8f0; font-size:13px; font-weight:600; cursor:grab; box-shadow:0 8px 32px rgba(0,0,0,0.5); transition:all 0.25s; user-select:none; animation:tbFadeIn 0.4s ease; }
+    .tb-pill:hover { transform:scale(1.05); border-color:#7c5cfc; box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 20px rgba(124,92,252,0.3); }
+    .tb-pill:active { cursor:grabbing; }
+    .tb-pill svg { width:18px; height:18px; color:#7c5cfc; flex-shrink:0; }
+    @keyframes tbFadeIn { from{opacity:0;transform:scale(0.9) translateY(8px)} to{opacity:1;transform:none} }
+
+    /* ── Context Menu ───────────────────────────────── */
+    .tb-ctx { display:none; position:absolute; bottom:calc(100% + 8px); right:0; min-width:200px; background:rgba(15,15,25,0.97); border:1px solid rgba(255,255,255,0.12); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.6); overflow:hidden; animation:ctxIn 0.2s ease; z-index:10; }
+    .tb-ctx.show { display:block; }
+    @keyframes ctxIn { from{opacity:0;transform:translateY(6px) scale(0.96)} to{opacity:1;transform:none} }
+    .ctx-item { display:flex; align-items:center; gap:10px; padding:11px 14px; font-size:12.5px; color:#c0c0d0; cursor:pointer; transition:background 0.15s, color 0.15s; border:none; background:none; width:100%; text-align:left; font-family:inherit; }
+    .ctx-item:hover { background:rgba(124,92,252,0.12); color:#e8e8f0; }
+    .ctx-item svg { width:16px; height:16px; opacity:0.6; flex-shrink:0; }
+    .ctx-item.danger { color:#f87171; }
+    .ctx-item.danger:hover { background:rgba(248,113,113,0.1); }
+    .ctx-sep { height:1px; background:rgba(255,255,255,0.06); margin:2px 0; }
+    .ctx-domain { padding:8px 14px; font-size:11px; color:#6b6b80; border-bottom:1px solid rgba(255,255,255,0.06); }
+
+    /* ── Panel ───────────────────────────────────────── */
+    .tb-panel { display:none; flex-direction:column; width:370px; max-height:540px; background:rgba(15,15,25,0.95); border:1px solid rgba(255,255,255,0.12); border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.5); overflow:hidden; animation:tbPanelIn 0.3s ease; }
+    @keyframes tbPanelIn { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:none} }
 
     .tb-hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,0.08); cursor:grab; user-select:none; }
     .tb-hdr:active { cursor:grabbing; }
@@ -64,7 +85,7 @@
     .pt { font-size:12px; color:#8888a0; }
 
     .tb-toast { display:none; position:absolute; bottom:72px; left:14px; right:14px; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:500; z-index:10; }
-    .tb-toast.show { display:block; }
+    .tb-toast.show { display:block; animation:tbFadeIn 0.3s ease; }
     .tb-toast.error { background:rgba(248,113,113,0.15); border:1px solid rgba(248,113,113,0.3); color:#f87171; }
     .tb-toast.info { background:rgba(124,92,252,0.1); border:1px solid rgba(124,92,252,0.3); color:#7c5cfc; }
 
@@ -81,70 +102,110 @@
     .clr svg { width:14px; height:14px; }
   `;
 
-  // Don't run on chrome:// or extension pages
-  if (location.protocol === 'chrome:' || location.protocol === 'chrome-extension:') {
-    console.log('[TalkBro] Skipping — chrome:// or extension page');
-    return;
-  }
-
-  // Prevent double injection
-  if (document.getElementById('talkbro-host')) {
-    console.log('[TalkBro] Already injected, skipping');
-    return;
-  }
-
-  // Wait for body
-  if (!document.body) {
-    console.log('[TalkBro] Waiting for DOMContentLoaded...');
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log('[TalkBro] DOMContentLoaded fired, calling init()');
-      init();
-    });
-    return;
-  }
-  console.log('[TalkBro] Body exists, calling init() immediately');
+  // ── Guards ──────────────────────────────────────────
+  if (location.protocol === 'chrome:' || location.protocol === 'chrome-extension:') return;
+  if (document.getElementById('talkbro-host')) return;
+  if (!document.body) { document.addEventListener('DOMContentLoaded', init); return; }
   init();
 
   function init() {
-    if (document.getElementById('talkbro-host')) {
-      console.log('[TalkBro] init() — host already exists, skipping');
-      return;
-    }
-    try {
-    console.log('[TalkBro] init() — creating shadow DOM host...');
+    if (document.getElementById('talkbro-host')) return;
 
-    // ── Create Shadow Host with INLINE styles ──
+    const currentDomain = location.hostname;
+
+    // ── Check if site is disabled ──
+    chrome.runtime.sendMessage({ type: 'CHECK_SITE', domain: currentDomain }).then(r => {
+      if (r && r.disabled) {
+        console.log(`[TalkBro] Disabled on ${currentDomain}, skipping.`);
+        return;
+      }
+      // ── Check if page has text inputs ──
+      if (pageHasInputs()) {
+        buildUI(currentDomain);
+      } else {
+        // Watch for dynamically added inputs
+        const observer = new MutationObserver(() => {
+          if (pageHasInputs()) {
+            observer.disconnect();
+            buildUI(currentDomain);
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        // Timeout: stop watching after 30s
+        setTimeout(() => observer.disconnect(), 30000);
+      }
+    }).catch(() => {
+      // If messaging fails, just show it
+      if (pageHasInputs()) buildUI(currentDomain);
+    });
+  }
+
+  // ══════════════════════════════════════════════════
+  // ██ INPUT FIELD DETECTION ██
+  // ══════════════════════════════════════════════════
+
+  function pageHasInputs() {
+    const selectors = [
+      'input[type="text"]', 'input[type="search"]', 'input[type="email"]',
+      'input[type="url"]', 'input[type="tel"]', 'input[type="password"]',
+      'input:not([type])', 'textarea', '[contenteditable="true"]',
+      '[contenteditable=""]', '[role="textbox"]', '[role="searchbox"]',
+      '.ql-editor', '.ProseMirror', '.CodeMirror', '.cm-content',
+      // Common app-specific selectors
+      '[data-testid*="compose"]', '[data-testid*="input"]',
+      '[aria-label*="Message"]', '[aria-label*="Search"]',
+      '[aria-label*="message"]', '[aria-label*="search"]',
+      '[aria-label*="Comment"]', '[aria-label*="comment"]',
+      '[aria-label*="Type"]', '[aria-label*="Write"]'
+    ];
+    return document.querySelector(selectors.join(',')) !== null;
+  }
+
+  // ══════════════════════════════════════════════════
+  // ██ BUILD UI ██
+  // ══════════════════════════════════════════════════
+
+  function buildUI(currentDomain) {
     const host = document.createElement('div');
     host.id = 'talkbro-host';
-    host.setAttribute('style', 'position:fixed !important; bottom:20px !important; right:20px !important; z-index:2147483647 !important; display:block !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; transform:none !important; overflow:visible !important;');
-    
-    // Prefer body over documentElement for more reliable rendering
-    const parent = document.body || document.documentElement;
-    parent.appendChild(host);
-    console.log('[TalkBro] Host element appended to', parent.tagName);
-
+    host.setAttribute('style', 'position:fixed !important; z-index:2147483647 !important; display:block !important; pointer-events:auto !important;');
+    document.body.appendChild(host);
     const shadow = host.attachShadow({ mode: 'open' });
 
-    // ── CSS ──
     const style = document.createElement('style');
     style.textContent = CSS_TEXT;
     shadow.appendChild(style);
 
-    // ── HTML ──
+    // ── SVGs ──
     const micSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
     const copySVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
     const checkSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+    const closeSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    const eyeOffSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    const gearSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+    const banSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>';
 
     const container = document.createElement('div');
     container.innerHTML = `
       <div class="tb" id="tb">
         <div class="tb-pill" id="pill">${micSVG}<span>TalkBro</span></div>
+
+        <!-- Context Menu -->
+        <div class="tb-ctx" id="ctx">
+          <div class="ctx-domain">${currentDomain}</div>
+          <button class="ctx-item" id="ctx-record">${micSVG} Start Recording</button>
+          <div class="ctx-sep"></div>
+          <button class="ctx-item" id="ctx-hide">${eyeOffSVG} Hide Temporarily</button>
+          <button class="ctx-item danger" id="ctx-disable">${banSVG} Disable on this site</button>
+          <div class="ctx-sep"></div>
+          <button class="ctx-item" id="ctx-settings">${gearSVG} Settings</button>
+        </div>
+
         <div class="tb-panel" id="panel">
-          <div class="tb-hdr" id="drag">
-            <div class="tb-hdr-l">${micSVG}<span class="tb-title">TalkBro</span></div>
-            <div class="tb-hdr-r">
+          <div class="tb-hdr" id="drag">${micSVG.replace('viewBox', 'style="width:20px;height:20px;color:#7c5cfc" viewBox')}<span class="tb-title" style="margin-left:8px">TalkBro</span>
+            <div class="tb-hdr-r" style="margin-left:auto; display:flex; align-items:center; gap:4px;">
               <select class="tb-sel" id="preset"><option value="clean">Clean Up</option><option value="formal">Formal</option><option value="bullets">Bullets</option><option value="email">Email</option><option value="code">Code Docs</option><option value="summary">Summary</option></select>
-              <button class="ib" id="setBtn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg></button>
+              <button class="ib" id="setBtn" title="Settings">${gearSVG}</button>
               <button class="ib" id="minBtn" title="Minimize"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
             </div>
           </div>
@@ -167,36 +228,166 @@
     `;
     shadow.appendChild(container.firstElementChild);
 
-    // ── LOGIC ──
+    // ── DOM Refs ──
     const q = (id) => shadow.getElementById(id);
-    const tb = q('tb'), pill = q('pill'), panel = q('panel');
+    const tb = q('tb'), pill = q('pill'), panel = q('panel'), ctx = q('ctx');
     const mic = q('mic'), clr = q('clr'), minBtn = q('minBtn'), setBtn = q('setBtn');
     const preset = q('preset'), wave = q('wave'), cv = q('cv');
     const idle = q('idle'), res = q('res'), proc = q('proc');
     const rTxt = q('rTxt'), eTxt = q('eTxt'), toast = q('toast');
     const cpR = q('cpR'), cpE = q('cpE'), drag = q('drag');
-    const ctx = cv ? cv.getContext('2d') : null;
+    const wCtx = cv ? cv.getContext('2d') : null;
 
     let recording = false, mr = null, chunks = [], actx = null, an = null;
-    let strm = null, stmr = null, af = null, dragging = false, doff = {x:0,y:0};
-    let silMs = 2000, sr = null, ltx = '';
+    let strm = null, stmr = null, af = null, silMs = 2000;
+    let sr = null, ltx = '';
+    let dragging = false, dragStartX = 0, dragStartY = 0, dragDist = 0;
+    const DRAG_THRESHOLD = 5;
+    const EDGE = 8;
+    let ctxOpen = false;
 
-    // Toggle
-    pill.onclick = () => { panel.style.display = 'flex'; pill.style.display = 'none'; };
-    minBtn.onclick = () => { panel.style.display = 'none'; pill.style.display = 'flex'; if (recording) stopR(); };
+    // ── Fade-in with slight delay ──
+    requestAnimationFrame(() => host.classList.add('visible'));
 
-    // Drag
-    drag.onmousedown = (e) => {
-      dragging = true;
-      const r = host.getBoundingClientRect();
-      doff = { x: e.clientX - r.left, y: e.clientY - r.top };
-      const mv = (e2) => { if (!dragging) return; host.style.right = 'auto'; host.style.bottom = 'auto'; host.style.left = (e2.clientX - doff.x)+'px'; host.style.top = (e2.clientY - doff.y)+'px'; };
-      const up = () => { dragging = false; document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
-      document.addEventListener('mousemove', mv);
-      document.addEventListener('mouseup', up);
+    // ══════════════════════════════════════════════════
+    // ██ CONTEXT MENU ██
+    // ══════════════════════════════════════════════════
+
+    function toggleCtx() {
+      ctxOpen = !ctxOpen;
+      ctx.classList.toggle('show', ctxOpen);
+    }
+
+    function closeCtx() {
+      ctxOpen = false;
+      ctx.classList.remove('show');
+    }
+
+    // Close context menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (ctxOpen && !host.contains(e.target)) closeCtx();
+    });
+
+    // Context menu items
+    q('ctx-record').onclick = () => {
+      closeCtx();
+      panel.style.display = 'flex'; pill.style.display = 'none';
+      setTimeout(() => startR(), 200);
     };
 
-    // Record
+    q('ctx-hide').onclick = () => {
+      closeCtx();
+      host.classList.remove('visible');
+      setTimeout(() => host.style.display = 'none', 400);
+    };
+
+    q('ctx-disable').onclick = () => {
+      closeCtx();
+      chrome.runtime.sendMessage({ type: 'DISABLE_SITE', domain: currentDomain }).then(() => {
+        host.classList.remove('visible');
+        setTimeout(() => { host.remove(); }, 400);
+      });
+    };
+
+    q('ctx-settings').onclick = () => {
+      closeCtx();
+      chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
+    };
+
+    // ══════════════════════════════════════════════════
+    // ██ DRAG ██
+    // ══════════════════════════════════════════════════
+
+    function getPointer(e) {
+      if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+
+    function startDrag(e) {
+      if (e.button && e.button !== 0) return;
+      e.preventDefault();
+      const p = getPointer(e);
+      const r = host.getBoundingClientRect();
+      dragStartX = p.x; dragStartY = p.y; dragDist = 0; dragging = true;
+      host._dragOffX = p.x - r.left; host._dragOffY = p.y - r.top;
+      host.classList.add('tb-dragging');
+      document.addEventListener('mousemove', onDrag, { passive: false });
+      document.addEventListener('mouseup', endDrag);
+      document.addEventListener('touchmove', onDrag, { passive: false });
+      document.addEventListener('touchend', endDrag);
+    }
+
+    function onDrag(e) {
+      if (!dragging) return;
+      e.preventDefault();
+      const p = getPointer(e);
+      dragDist = Math.hypot(p.x - dragStartX, p.y - dragStartY);
+      let nx = p.x - host._dragOffX, ny = p.y - host._dragOffY;
+      const hw = host.offsetWidth || 100, hh = host.offsetHeight || 50;
+      nx = Math.max(EDGE, Math.min(nx, window.innerWidth - hw - EDGE));
+      ny = Math.max(EDGE, Math.min(ny, window.innerHeight - hh - EDGE));
+      host.style.left = nx + 'px'; host.style.top = ny + 'px';
+      host.style.right = 'auto'; host.style.bottom = 'auto';
+    }
+
+    function endDrag() {
+      if (!dragging) return;
+      dragging = false; host.classList.remove('tb-dragging');
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', endDrag);
+      document.removeEventListener('touchmove', onDrag);
+      document.removeEventListener('touchend', endDrag);
+      if (dragDist > DRAG_THRESHOLD) {
+        const r = host.getBoundingClientRect();
+        chrome.runtime.sendMessage({ type: 'SAVE_POSITION', position: { x: r.left, y: r.top } }).catch(() => {});
+      }
+    }
+
+    pill.addEventListener('mousedown', startDrag);
+    pill.addEventListener('touchstart', startDrag, { passive: false });
+    drag.addEventListener('mousedown', startDrag);
+    drag.addEventListener('touchstart', startDrag, { passive: false });
+
+    // ── Pill click → context menu (if not dragged) ──
+    pill.addEventListener('click', (e) => {
+      if (dragDist > DRAG_THRESHOLD) { e.preventDefault(); return; }
+      toggleCtx();
+    });
+
+    pill.addEventListener('touchend', (e) => {
+      if (dragDist > DRAG_THRESHOLD) return;
+      e.preventDefault();
+      toggleCtx();
+    });
+
+    minBtn.onclick = () => { panel.style.display = 'none'; pill.style.display = 'flex'; if (recording) stopR(); };
+
+    // ══════════════════════════════════════════════════
+    // ██ SMART POSITIONING ██
+    // ══════════════════════════════════════════════════
+
+    function applyPosition(pos) {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      if (pos && pos.x !== null && pos.y !== null) {
+        host.style.left = Math.max(EDGE, Math.min(pos.x, vw - 120)) + 'px';
+        host.style.top = Math.max(EDGE, Math.min(pos.y, vh - 60)) + 'px';
+      } else {
+        host.style.left = (vw - 140) + 'px';
+        host.style.top = (vh - 70) + 'px';
+      }
+      host.style.right = 'auto'; host.style.bottom = 'auto';
+    }
+
+    window.addEventListener('resize', () => {
+      const r = host.getBoundingClientRect();
+      host.style.left = Math.max(EDGE, Math.min(r.left, window.innerWidth - 120)) + 'px';
+      host.style.top = Math.max(EDGE, Math.min(r.top, window.innerHeight - 60)) + 'px';
+    });
+
+    // ══════════════════════════════════════════════════
+    // ██ RECORDING ██
+    // ══════════════════════════════════════════════════
+
     mic.onclick = () => { if (recording) stopR(); else startR(); };
 
     async function startR() {
@@ -238,7 +429,6 @@
       else { showT('No speech detected', 'info'); idle.style.display = ''; }
     }
 
-    // Live speech
     function startSR() {
       const S = window.SpeechRecognition || window.webkitSpeechRecognition; if (!S) return;
       ltx = ''; sr = new S(); sr.continuous = true; sr.interimResults = true; sr.lang = 'en-US';
@@ -247,7 +437,6 @@
     }
     function stopSR() { if (sr) { try { sr.stop(); } catch {} sr = null; } }
 
-    // Process text → LLM
     async function processT(raw) {
       rTxt.textContent = raw; res.style.display = 'flex'; proc.style.display = 'flex'; idle.style.display = 'none';
       try {
@@ -258,7 +447,6 @@
       } catch { proc.style.display = 'none'; eTxt.textContent = raw; showT('Cannot reach LLM','error'); clr.style.display = 'flex'; }
     }
 
-    // Process blob → Whisper
     async function processB(blob) {
       proc.style.display = 'flex'; idle.style.display = 'none';
       try {
@@ -267,21 +455,19 @@
         const r = await chrome.runtime.sendMessage({ type: 'TRANSCRIBE_AUDIO', audioData: { base64: b64, mimeType: blob.type } });
         if (r && r.success && r.transcript) processT(r.transcript);
         else { proc.style.display = 'none'; idle.style.display = ''; showT((r&&r.error)||'Transcription failed','error'); }
-      } catch { proc.style.display = 'none'; idle.style.display = ''; showT('Whisper server unreachable','error'); }
+      } catch { proc.style.display = 'none'; idle.style.display = ''; showT('Whisper unreachable','error'); }
     }
 
-    // Waveform
     function drawW() {
-      if (!recording||!an||!ctx) return;
+      if (!recording||!an||!wCtx) return;
       const b = new Uint8Array(an.frequencyBinCount); an.getByteFrequencyData(b);
       const W = cv.width = cv.offsetWidth*2, H = cv.height = cv.offsetHeight*2;
-      ctx.clearRect(0,0,W,H);
+      wCtx.clearRect(0,0,W,H);
       const bw = (W/b.length)*2.5; let x = 0;
-      for (let i=0;i<b.length;i++) { const bh=(b[i]/255)*H*0.8; ctx.fillStyle=`hsla(${250+(b[i]/255)*30},70%,65%,0.8)`; ctx.fillRect(x,H-bh,bw-1,bh); x+=bw; }
+      for (let i=0;i<b.length;i++) { const bh=(b[i]/255)*H*0.8; wCtx.fillStyle=`hsla(${250+(b[i]/255)*30},70%,65%,0.8)`; wCtx.fillRect(x,H-bh,bw-1,bh); x+=bw; }
       af = requestAnimationFrame(drawW);
     }
 
-    // Silence
     function detectS() {
       const b = new Uint8Array(an.frequencyBinCount);
       (function ck() { if (!recording) return; an.getByteFrequencyData(b); const a=b.reduce((a,b)=>a+b,0)/b.length;
@@ -290,39 +476,40 @@
       })();
     }
 
-    // Copy
     function bindC(btn, fn) {
       btn.onclick = () => navigator.clipboard.writeText(fn()).then(() => { btn.classList.add('cpd'); const o=btn.innerHTML; btn.innerHTML=checkSVG; setTimeout(()=>{btn.classList.remove('cpd');btn.innerHTML=o;},1500); });
     }
     bindC(cpR, () => rTxt.textContent);
     bindC(cpE, () => eTxt.textContent);
 
-    // Clear
     clr.onclick = () => { rTxt.textContent=''; eTxt.textContent=''; res.style.display='none'; clr.style.display='none'; idle.style.display=''; ltx=''; };
-
-    // Settings
     setBtn.onclick = () => chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' });
 
-    // Toast
     function showT(m, t) { toast.textContent = m; toast.className = 'tb-toast show ' + t; setTimeout(() => toast.classList.remove('show'), 4000); }
 
-    // Background messages
+    // ── Background messages ──
     chrome.runtime.onMessage.addListener((msg) => {
-      if (msg.type === 'TOGGLE_PANEL') { if (panel.style.display === 'flex') { panel.style.display='none'; pill.style.display='flex'; } else { panel.style.display='flex'; pill.style.display='none'; } }
-      if (msg.type === 'TOGGLE_RECORDING') { if (panel.style.display !== 'flex') { panel.style.display='flex'; pill.style.display='none'; } setTimeout(()=>{if(recording)stopR();else startR();},300); }
+      if (msg.type === 'TOGGLE_PANEL') {
+        closeCtx();
+        if (panel.style.display === 'flex') { panel.style.display='none'; pill.style.display='flex'; }
+        else { panel.style.display='flex'; pill.style.display='none'; }
+      }
+      if (msg.type === 'TOGGLE_RECORDING') {
+        closeCtx();
+        if (panel.style.display !== 'flex') { panel.style.display='flex'; pill.style.display='none'; }
+        setTimeout(()=>{if(recording)stopR();else startR();},300);
+      }
     });
 
-    // Load settings
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).then(r => { if (r&&r.success) { silMs = r.settings.silenceTimeout||2000; if (r.settings.enhancementPreset) preset.value = r.settings.enhancementPreset; } }).catch(()=>{});
+    // ── Load settings + restore position ──
+    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).then(r => {
+      if (r && r.success) {
+        silMs = r.settings.silenceTimeout || 2000;
+        if (r.settings.enhancementPreset) preset.value = r.settings.enhancementPreset;
+        applyPosition(r.settings.panelPosition);
+      } else { applyPosition(null); }
+    }).catch(() => { applyPosition(null); });
 
-    console.log('%c[TalkBro] Ready! Panel and pill created successfully.', 'color:#34d399;font-size:16px;font-weight:bold');
-    console.log('[TalkBro] Pill display:', pill.style.display || 'default (flex via CSS)');
-    console.log('[TalkBro] Panel display:', panel.style.display || 'default (none via CSS)');
-    console.log('[TalkBro] Host computed visibility:', window.getComputedStyle(host).visibility);
-    console.log('[TalkBro] Host computed display:', window.getComputedStyle(host).display);
-    } catch (err) {
-      console.error('[TalkBro] FATAL ERROR in init():', err);
-    }
+    console.log('%c[TalkBro] Ready!', 'color:#34d399;font-weight:bold');
   }
 })();
-

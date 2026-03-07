@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TalkBro Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ TalkBro Settings</h1>
+
+    <section>
+      <h2>🎤 Speech Recognition</h2>
+      <div class="field">
+        <label for="whisper-model">Whisper Model Size</label>
+        <select id="whisper-model">
+          <option value="tiny">Tiny (~39 MB — fastest)</option>
+          <option value="base">Base (~74 MB — better accuracy)</option>
+        </select>
+        <span class="hint">Model downloads automatically on first use and is cached locally.</span>
+      </div>
+      <div class="field">
+        <label for="silence-timeout">Silence Timeout</label>
+        <div class="range-row">
+          <input type="range" id="silence-timeout" min="1" max="5" step="0.5" value="2">
+          <span id="silence-val">2.0s</span>
+        </div>
+        <span class="hint">Seconds of silence before recording auto-stops.</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>⌨️ Keyboard Shortcut</h2>
+      <div class="field">
+        <label for="shortcut">Global Activation Shortcut</label>
+        <input type="text" id="shortcut" value="Ctrl+Shift+V" readonly>
+        <span class="hint">Press Ctrl+Shift+V anywhere to start/stop dictation.</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>🎨 Appearance</h2>
+      <div class="field">
+        <label for="theme">Theme</label>
+        <select id="theme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </div>
+    </section>
+
+    <section>
+      <h2>🚀 Startup</h2>
+      <div class="field checkbox-field">
+        <input type="checkbox" id="auto-start">
+        <label for="auto-start">Start TalkBro when Windows starts</label>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="save-btn" class="btn-primary">Save Settings</button>
+      <span id="save-status" class="save-status hidden">✓ Saved!</span>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

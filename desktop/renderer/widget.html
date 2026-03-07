@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TalkBro Widget</title>
+  <link rel="stylesheet" href="widget.css">
+</head>
+<body>
+  <div id="widget" class="widget idle">
+    <!-- Mic Button -->
+    <button id="mic-btn" class="mic-btn" title="Click to start dictation (Ctrl+Shift+V)">
+      <svg id="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      <!-- Processing spinner (hidden by default) -->
+      <svg id="spinner" class="spinner hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="12" cy="12" r="10" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <!-- Status text (appears below during recording/processing) -->
+    <div id="status" class="status hidden">
+      <span id="status-text">Ready</span>
+    </div>
+
+    <!-- Waveform (appears during recording) -->
+    <canvas id="waveform" class="waveform hidden" width="200" height="32"></canvas>
+  </div>
+
+  <script src="widget.js"></script>
+</body>
+</html>

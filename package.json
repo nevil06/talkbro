@@ -1,0 +1,27 @@
+{
+  "name": "talkbro",
+  "version": "1.0.0",
+  "description": "> Speak naturally, get polished text. A floating side-by-side companion powered by **OpenAI Whisper** (local) & **open-source LLMs**.",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nevil06/talkbro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nevil06/talkbro/issues"
+  },
+  "homepage": "https://github.com/nevil06/talkbro#readme",
+  "dependencies": {
+    "@huggingface/transformers": "^3.8.1"
+  }
+}
