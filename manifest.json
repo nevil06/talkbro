@@ -1,0 +1,68 @@
+{
+  "manifest_version": 3,
+  "name": "TalkBro",
+  "version": "1.0.0",
+  "description": "A floating voice companion — speak naturally, get polished text. Powered by Whisper & open-source LLMs.",
+  "permissions": [
+    "activeTab",
+    "sidePanel",
+    "storage",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "http://localhost:11434/*",
+    "http://localhost:5555/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/inject.js"],
+      "css": [],
+      "run_at": "document_idle"
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_icon": {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    },
+    "default_title": "TalkBro — Voice Companion"
+  },
+  "icons": {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Toggle TalkBro panel"
+    },
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Alt+R"
+      },
+      "description": "Start/Stop recording"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["content/panel.html", "content/panel.css", "content/panel.js", "assets/fonts/*", "assets/sounds/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

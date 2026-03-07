@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TalkBro — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <div class="logo-row">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+        <h1>TalkBro <span class="version">v1.0.0</span></h1>
+      </div>
+      <p class="tagline">Your voice companion — speak naturally, get polished text.</p>
+    </header>
+
+    <!-- STT Settings -->
+    <section class="settings-section">
+      <h2>🎤 Speech-to-Text</h2>
+      <div class="setting-row">
+        <label for="stt-mode">Transcription Mode</label>
+        <select id="stt-mode">
+          <option value="local">Local (Whisper Server — free, private, best accuracy)</option>
+          <option value="remote">Remote (OpenAI Whisper API — no setup needed)</option>
+        </select>
+      </div>
+
+      <!-- Local Whisper Server Settings -->
+      <div id="whisper-settings">
+        <div class="setting-row">
+          <label for="whisper-endpoint">Whisper Server Endpoint</label>
+          <input type="url" id="whisper-endpoint" placeholder="http://localhost:5555" value="http://localhost:5555">
+          <span class="hint">Run <code>start.bat</code> in the <code>whisper-server/</code> folder to start the server.</span>
+        </div>
+        <div class="setting-row">
+          <div id="whisper-status" class="status-badge">
+            <span class="status-dot"></span>
+            <span class="status-text">Checking Whisper server...</span>
+          </div>
+          <button id="check-whisper" class="btn-secondary">Check Connection</button>
+        </div>
+      </div>
+
+      <!-- Remote OpenAI Whisper Settings -->
+      <div class="setting-row hidden" id="openai-key-row">
+        <label for="openai-key">OpenAI API Key</label>
+        <div class="input-group">
+          <input type="password" id="openai-key" placeholder="sk-..." autocomplete="off">
+          <button class="toggle-visibility" data-target="openai-key" aria-label="Toggle visibility">👁️</button>
+        </div>
+        <span class="hint">Required for Whisper API. Get one at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a></span>
+      </div>
+    </section>
+
+    <!-- LLM Settings -->
+    <section class="settings-section">
+      <h2>🧠 Text Enhancement (LLM)</h2>
+      <div class="setting-row">
+        <label for="llm-mode">LLM Mode</label>
+        <select id="llm-mode">
+          <option value="local">Local (Ollama — free, private, requires install)</option>
+          <option value="remote">Remote (Groq / OpenRouter — cloud, fast)</option>
+        </select>
+      </div>
+
+      <!-- Ollama Settings -->
+      <div id="ollama-settings">
+        <div class="setting-row">
+          <label for="ollama-endpoint">Ollama Endpoint</label>
+          <input type="url" id="ollama-endpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
+        </div>
+        <div class="setting-row">
+          <label for="ollama-model">Ollama Model</label>
+          <input type="text" id="ollama-model" placeholder="mistral" value="mistral">
+          <span class="hint">Popular: mistral, llama3, phi3 (lightweight). Run <code>ollama pull &lt;model&gt;</code> first.</span>
+        </div>
+        <div class="setting-row">
+          <div id="ollama-status" class="status-badge">
+            <span class="status-dot"></span>
+            <span class="status-text">Checking Ollama...</span>
+          </div>
+          <button id="check-ollama" class="btn-secondary">Check Connection</button>
+        </div>
+      </div>
+
+      <!-- Remote LLM Settings -->
+      <div id="remote-llm-settings" class="hidden">
+        <div class="setting-row">
+          <label for="groq-key">Groq API Key</label>
+          <div class="input-group">
+            <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off">
+            <button class="toggle-visibility" data-target="groq-key" aria-label="Toggle visibility">👁️</button>
+          </div>
+          <span class="hint">Free tier available at <a href="https://console.groq.com" target="_blank">console.groq.com</a></span>
+        </div>
+        <div class="setting-row">
+          <label for="openrouter-key">OpenRouter API Key (fallback)</label>
+          <div class="input-group">
+            <input type="password" id="openrouter-key" placeholder="sk-or-..." autocomplete="off">
+            <button class="toggle-visibility" data-target="openrouter-key" aria-label="Toggle visibility">👁️</button>
+          </div>
+          <span class="hint">Alternative cloud LLM at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- General Settings -->
+    <section class="settings-section">
+      <h2>⚙️ General</h2>
+      <div class="setting-row">
+        <label for="preset">Default Enhancement Style</label>
+        <select id="preset">
+          <option value="clean">✨ Clean Up</option>
+          <option value="formal">🎩 Formal</option>
+          <option value="bullets">📋 Bullet Points</option>
+          <option value="email">✉️ Email</option>
+          <option value="code">💻 Code Docs</option>
+          <option value="summary">📝 Summary</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="silence-timeout">Silence Auto-Stop (seconds)</label>
+        <input type="number" id="silence-timeout" min="1" max="10" step="0.5" value="2">
+        <span class="hint">Recording automatically stops after this many seconds of silence.</span>
+      </div>
+      <div class="setting-row">
+        <label for="theme">Theme</label>
+        <select id="theme">
+          <option value="auto">Auto (follow system)</option>
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Save -->
+    <div class="save-row">
+      <button id="save-btn" class="btn-primary">Save Settings</button>
+      <span id="save-status" class="save-status hidden">✅ Saved!</span>
+    </div>
+
+    <!-- Quick Start Guide -->
+    <section class="settings-section guide-section">
+      <h2>🚀 Quick Start</h2>
+      <ol class="guide-steps">
+        <li>Navigate to any webpage and click the <strong>TalkBro</strong> pill in the bottom-right corner</li>
+        <li>Press the <strong>mic button</strong> (or <kbd>Alt+R</kbd>) and speak naturally</li>
+        <li>Wait for transcription and AI enhancement</li>
+        <li>Click the <strong>copy button</strong> on the enhanced text card</li>
+      </ol>
+      <div class="shortcuts-grid">
+        <div class="shortcut"><kbd>Alt+T</kbd> Toggle panel</div>
+        <div class="shortcut"><kbd>Alt+R</kbd> Start/Stop recording</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
