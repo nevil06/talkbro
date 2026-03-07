@@ -5,6 +5,7 @@
 
 (function () {
   'use strict';
+  console.log('%c[TalkBro] Content script loaded', 'color:#7c5cfc;font-weight:bold');
 
   // ── CSS (must be defined BEFORE init() is called) ──
   const CSS_TEXT = `
@@ -81,26 +82,46 @@
   `;
 
   // Don't run on chrome:// or extension pages
-  if (location.protocol === 'chrome:' || location.protocol === 'chrome-extension:') return;
+  if (location.protocol === 'chrome:' || location.protocol === 'chrome-extension:') {
+    console.log('[TalkBro] Skipping — chrome:// or extension page');
+    return;
+  }
 
   // Prevent double injection
-  if (document.getElementById('talkbro-host')) return;
+  if (document.getElementById('talkbro-host')) {
+    console.log('[TalkBro] Already injected, skipping');
+    return;
+  }
 
   // Wait for body
   if (!document.body) {
-    document.addEventListener('DOMContentLoaded', init);
+    console.log('[TalkBro] Waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('[TalkBro] DOMContentLoaded fired, calling init()');
+      init();
+    });
     return;
   }
+  console.log('[TalkBro] Body exists, calling init() immediately');
   init();
 
   function init() {
-    if (document.getElementById('talkbro-host')) return;
+    if (document.getElementById('talkbro-host')) {
+      console.log('[TalkBro] init() — host already exists, skipping');
+      return;
+    }
+    try {
+    console.log('[TalkBro] init() — creating shadow DOM host...');
 
     // ── Create Shadow Host with INLINE styles ──
     const host = document.createElement('div');
     host.id = 'talkbro-host';
     host.setAttribute('style', 'position:fixed !important; bottom:20px !important; right:20px !important; z-index:2147483647 !important; display:block !important; visibility:visible !important; opacity:1 !important; pointer-events:auto !important; width:auto !important; height:auto !important; margin:0 !important; padding:0 !important; transform:none !important; overflow:visible !important;');
-    document.documentElement.appendChild(host);
+    
+    // Prefer body over documentElement for more reliable rendering
+    const parent = document.body || document.documentElement;
+    parent.appendChild(host);
+    console.log('[TalkBro] Host element appended to', parent.tagName);
 
     const shadow = host.attachShadow({ mode: 'open' });
 
@@ -294,7 +315,14 @@
     // Load settings
     chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).then(r => { if (r&&r.success) { silMs = r.settings.silenceTimeout||2000; if (r.settings.enhancementPreset) preset.value = r.settings.enhancementPreset; } }).catch(()=>{});
 
-    console.log('%c[TalkBro] Ready!', 'color:#34d399;font-size:16px;font-weight:bold');
+    console.log('%c[TalkBro] Ready! Panel and pill created successfully.', 'color:#34d399;font-size:16px;font-weight:bold');
+    console.log('[TalkBro] Pill display:', pill.style.display || 'default (flex via CSS)');
+    console.log('[TalkBro] Panel display:', panel.style.display || 'default (none via CSS)');
+    console.log('[TalkBro] Host computed visibility:', window.getComputedStyle(host).visibility);
+    console.log('[TalkBro] Host computed display:', window.getComputedStyle(host).display);
+    } catch (err) {
+      console.error('[TalkBro] FATAL ERROR in init():', err);
+    }
   }
 })();
 
