@@ -92,12 +92,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
-  if (message.type === 'CHECK_OLLAMA') {
-    checkOllamaAvailability()
-      .then(result => sendResponse(result))
-      .catch(() => sendResponse({ available: false }));
-    return true;
-  }
+
 
   if (message.type === 'CHECK_WHISPER') {
     checkLocalWhisper()
@@ -127,17 +122,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Enhance text using the configured LLM.
+ * Enhance text using the local DeepSeek server backend.
  */
 async function handleEnhance(rawText, preset) {
   const settings = await getSettings();
-  const mode = settings.llmMode;
   const presetConfig = getPreset(preset || settings.enhancementPreset);
 
-  if (mode === 'local') {
-    return callOllama(presetConfig.prompt, rawText, settings);
-  } else {
-    return callRemoteLLM(presetConfig.prompt, rawText, settings);
+  try {
+    const response = await fetch('http://localhost:5555/enhance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemPrompt: presetConfig.prompt,
+        text: rawText
+      })
+    });
+
+    if (!response.ok) {
+      let errMsg = `Local server error: ${response.status}`;
+      try {
+        const err = await response.json();
+        errMsg = err.error || errMsg;
+      } catch (e) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await response.json();
+    return data.enhanced_text || '';
+  } catch (err) {
+    throw new Error(`Failed to reach local enhancement server. Is the Python server running? (${err.message})`);
   }
 }
 
@@ -199,87 +212,7 @@ async function handleTranscribe(audioData) {
   }
 }
 
-async function callOllama(systemPrompt, userMessage, settings) {
-  const endpoint = settings.ollamaEndpoint || 'http://localhost:11434';
-  const model = settings.ollamaModel || 'mistral';
 
-  const response = await fetch(`${endpoint}/api/chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMessage }
-      ],
-      stream: false
-    })
-  });
-
-  if (!response.ok) throw new Error(`Ollama error: ${response.status}`);
-  const data = await response.json();
-  return data.message?.content?.trim() || '';
-}
-
-async function callRemoteLLM(systemPrompt, userMessage, settings) {
-  if (settings.groqApiKey) {
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.groqApiKey}`
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.3,
-        max_tokens: 2048
-      })
-    });
-    if (!response.ok) throw new Error(`Groq error: ${response.status}`);
-    const data = await response.json();
-    return data.choices[0]?.message?.content?.trim() || '';
-  }
-
-  if (settings.openrouterApiKey) {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.openrouterApiKey}`
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3.3-70b-instruct',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.3
-      })
-    });
-    if (!response.ok) throw new Error(`OpenRouter error: ${response.status}`);
-    const data = await response.json();
-    return data.choices[0]?.message?.content?.trim() || '';
-  }
-
-  throw new Error('No API key configured. Set Groq or OpenRouter key in settings.');
-}
-
-async function checkOllamaAvailability() {
-  try {
-    const settings = await getSettings();
-    const endpoint = settings.ollamaEndpoint || 'http://localhost:11434';
-    const response = await fetch(`${endpoint}/api/tags`);
-    if (!response.ok) return { available: false };
-    const data = await response.json();
-    return { available: true, models: (data.models || []).map(m => m.name) };
-  } catch {
-    return { available: false };
-  }
-}
 
 async function checkLocalWhisper() {
   try {

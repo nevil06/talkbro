@@ -4,8 +4,8 @@
 
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: #0f0f1e;
-  color: #e8e8f0;
+  background: #f4f4f0;
+  color: #1e1e24;
   padding: 24px;
   line-height: 1.5;
 }
@@ -16,7 +16,7 @@ h1 {
   font-size: 22px;
   font-weight: 700;
   margin-bottom: 24px;
-  background: linear-gradient(135deg, #7c5cfc, #a78bfa);
+  background: linear-gradient(135deg, #2b5a84, #4682b4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -24,15 +24,15 @@ h1 {
 h2 {
   font-size: 14px;
   font-weight: 600;
-  color: #a78bfa;
+  color: #2b5a84;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 12px;
 }
 
 section {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 16px;
@@ -45,17 +45,17 @@ label {
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: #c0c0d0;
+  color: #4a4a4f;
   margin-bottom: 6px;
 }
 
 select, input[type="text"] {
   width: 100%;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 8px;
-  color: #e8e8f0;
+  color: #1e1e24;
   font-size: 13px;
   font-family: inherit;
   outline: none;
@@ -63,7 +63,7 @@ select, input[type="text"] {
 }
 
 select:focus, input[type="text"]:focus {
-  border-color: #7c5cfc;
+  border-color: #2b5a84;
 }
 
 .hint {
@@ -81,13 +81,13 @@ select:focus, input[type="text"]:focus {
 
 input[type="range"] {
   flex: 1;
-  accent-color: #7c5cfc;
+  accent-color: #2b5a84;
 }
 
 .range-row span {
   font-size: 13px;
   font-weight: 600;
-  color: #a78bfa;
+  color: #2b5a84;
   min-width: 36px;
 }
 
@@ -97,8 +97,8 @@ input[type="range"] {
   gap: 10px;
 }
 
-.checkbox-field label { margin-bottom: 0; cursor: pointer; }
-.checkbox-field input { accent-color: #7c5cfc; width: 16px; height: 16px; cursor: pointer; }
+.checkbox-field label { margin-bottom: 0; cursor: pointer; color: #1e1e24; }
+.checkbox-field input { accent-color: #2b5a84; width: 16px; height: 16px; cursor: pointer; }
 
 .actions {
   display: flex;
@@ -109,7 +109,7 @@ input[type="range"] {
 
 .btn-primary {
   padding: 10px 24px;
-  background: linear-gradient(135deg, #7c5cfc, #6d28d9);
+  background: linear-gradient(135deg, #2b5a84, #4682b4);
   color: white;
   border: none;
   border-radius: 10px;
@@ -120,13 +120,13 @@ input[type="range"] {
   font-family: inherit;
 }
 
-.btn-primary:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(124, 92, 252, 0.4); }
+.btn-primary:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(43, 90, 132, 0.3); }
 .btn-primary:active { transform: scale(0.97); }
 
 .save-status {
   font-size: 13px;
   font-weight: 600;
-  color: #34d399;
+  color: #2e7d32;
   animation: fadeIn 0.3s ease;
 }
 

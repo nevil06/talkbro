@@ -5,13 +5,8 @@
 
 const DEFAULTS = {
   sttMode: 'local',         // 'local' (on-device Whisper) or 'remote' (OpenAI API)
-  llmMode: 'local',         // 'local' (Ollama) or 'remote' (Groq/OpenRouter)
-  ollamaModel: 'mistral',
-  ollamaEndpoint: 'http://localhost:11434',
   whisperModel: 'tiny',     // 'tiny' (~39MB) or 'base' (~74MB)
   openaiApiKey: '',
-  groqApiKey: '',
-  openrouterApiKey: '',
   enhancementPreset: 'clean',  // clean | formal | bullets | email | code
   silenceTimeout: 2000,        // ms of silence before auto-stop
   theme: 'auto',               // auto | dark | light

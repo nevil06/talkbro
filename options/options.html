@@ -71,57 +71,6 @@
       </div>
     </section>
 
-    <!-- LLM Settings -->
-    <section class="settings-section">
-      <h2>🧠 Text Enhancement (LLM)</h2>
-      <div class="setting-row">
-        <label for="llm-mode">LLM Mode</label>
-        <select id="llm-mode">
-          <option value="local">Local (Ollama — free, private, requires install)</option>
-          <option value="remote">Remote (Groq / OpenRouter — cloud, fast)</option>
-        </select>
-      </div>
-
-      <!-- Ollama Settings -->
-      <div id="ollama-settings">
-        <div class="setting-row">
-          <label for="ollama-endpoint">Ollama Endpoint</label>
-          <input type="url" id="ollama-endpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
-        </div>
-        <div class="setting-row">
-          <label for="ollama-model">Ollama Model</label>
-          <input type="text" id="ollama-model" placeholder="mistral" value="mistral">
-          <span class="hint">Popular: mistral, llama3, phi3 (lightweight). Run <code>ollama pull &lt;model&gt;</code> first.</span>
-        </div>
-        <div class="setting-row">
-          <div id="ollama-status" class="status-badge">
-            <span class="status-dot"></span>
-            <span class="status-text">Checking Ollama...</span>
-          </div>
-          <button id="check-ollama" class="btn-secondary">Check Connection</button>
-        </div>
-      </div>
-
-      <!-- Remote LLM Settings -->
-      <div id="remote-llm-settings" class="hidden">
-        <div class="setting-row">
-          <label for="groq-key">Groq API Key</label>
-          <div class="input-group">
-            <input type="password" id="groq-key" placeholder="gsk_..." autocomplete="off">
-            <button class="toggle-visibility" data-target="groq-key" aria-label="Toggle visibility">👁️</button>
-          </div>
-          <span class="hint">Free tier available at <a href="https://console.groq.com" target="_blank">console.groq.com</a></span>
-        </div>
-        <div class="setting-row">
-          <label for="openrouter-key">OpenRouter API Key (fallback)</label>
-          <div class="input-group">
-            <input type="password" id="openrouter-key" placeholder="sk-or-..." autocomplete="off">
-            <button class="toggle-visibility" data-target="openrouter-key" aria-label="Toggle visibility">👁️</button>
-          </div>
-          <span class="hint">Alternative cloud LLM at <a href="https://openrouter.ai" target="_blank">openrouter.ai</a></span>
-        </div>
-      </div>
-    </section>
 
     <!-- General Settings -->
     <section class="settings-section">
@@ -149,6 +98,18 @@
           <option value="dark">Dark</option>
           <option value="light">Light</option>
         </select>
+      </div>
+    </section>
+
+    <!-- Permissions Management -->
+    <section class="settings-section">
+      <h2>🔒 Permissions Management</h2>
+      <p class="hint">TalkBro is currently disabled on the following websites. You can re-enable it for any site by removing it from this list.</p>
+      
+      <div id="disabled-sites-container" class="permissions-container">
+        <!-- Disabled sites will be injected here -->
+        <div id="disabled-sites-empty" class="permissions-empty hidden">TalkBro is active on all supported sites. You haven't disabled it anywhere.</div>
+        <ul id="disabled-sites-list" class="permissions-list"></ul>
       </div>
     </section>
 

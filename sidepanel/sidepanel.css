@@ -3,25 +3,15 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
-  --bg: #0d0d14;
-  --surface: #16162a;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e8e8f0;
-  --text-muted: #8888a0;
-  --accent: #7c5cfc;
-  --accent-soft: rgba(124, 92, 252, 0.12);
-  --success: #34d399;
+  --bg: #f4f4f0;
+  --surface: #ffffff;
+  --border: rgba(0, 0, 0, 0.12);
+  --text: #1e1e24;
+  --text-muted: #6b6b80;
+  --accent: #2b5a84;
+  --accent-soft: rgba(43, 90, 132, 0.1);
+  --success: #2e7d32;
   --font: 'Inter', system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f5f8;
-    --surface: #ffffff;
-    --border: rgba(0, 0, 0, 0.08);
-    --text: #1a1a2e;
-    --text-muted: #6b7280;
-  }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

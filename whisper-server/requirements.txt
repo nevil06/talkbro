@@ -1,3 +1,6 @@
 openai-whisper
 flask
 flask-cors
+torch
+transformers
+accelerate

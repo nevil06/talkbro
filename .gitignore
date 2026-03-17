@@ -8,5 +8,6 @@ __pycache__/
 *.pyc
 whisper-server/venv/
 whisper-server/models/
+whisper-server/model/
 *.pth
 talkbro/

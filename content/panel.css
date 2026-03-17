@@ -5,22 +5,22 @@
 
 /* ── CSS Variables (Theme Tokens) ────────────────── */
 :host {
-  --tb-bg: rgba(15, 15, 25, 0.92);
-  --tb-bg-solid: #0f0f19;
-  --tb-surface: rgba(255, 255, 255, 0.06);
-  --tb-surface-hover: rgba(255, 255, 255, 0.1);
-  --tb-border: rgba(255, 255, 255, 0.08);
-  --tb-text: #e8e8f0;
-  --tb-text-muted: #8888a0;
-  --tb-accent: #7c5cfc;
-  --tb-accent-glow: rgba(124, 92, 252, 0.4);
-  --tb-accent-soft: rgba(124, 92, 252, 0.15);
-  --tb-success: #34d399;
-  --tb-error: #f87171;
-  --tb-warning: #fbbf24;
+  --tb-bg: rgba(244, 244, 240, 0.95);
+  --tb-bg-solid: #f4f4f0;
+  --tb-surface: rgba(0, 0, 0, 0.04);
+  --tb-surface-hover: rgba(0, 0, 0, 0.08);
+  --tb-border: rgba(0, 0, 0, 0.12);
+  --tb-text: #1e1e24;
+  --tb-text-muted: #6b6b80;
+  --tb-accent: #2b5a84;
+  --tb-accent-glow: rgba(43, 90, 132, 0.2);
+  --tb-accent-soft: rgba(43, 90, 132, 0.1);
+  --tb-success: #2e7d32;
+  --tb-error: #d32f2f;
+  --tb-warning: #ed6c02;
   --tb-radius: 16px;
   --tb-radius-sm: 10px;
-  --tb-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  --tb-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.08);
   --tb-font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   --tb-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -29,18 +29,6 @@
   line-height: 1.5;
   color: var(--tb-text);
   -webkit-font-smoothing: antialiased;
-}
-
-/* ── Light Theme ─────────────────────────────────── */
-:host(.light) {
-  --tb-bg: rgba(255, 255, 255, 0.92);
-  --tb-bg-solid: #ffffff;
-  --tb-surface: rgba(0, 0, 0, 0.04);
-  --tb-surface-hover: rgba(0, 0, 0, 0.08);
-  --tb-border: rgba(0, 0, 0, 0.08);
-  --tb-text: #1a1a2e;
-  --tb-text-muted: #6b7280;
-  --tb-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.06);
 }
 
 /* ── Reset ───────────────────────────────────────── */

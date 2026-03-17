@@ -34,7 +34,63 @@ chrome.storage.local.get(DEFAULTS, (settings) => {
 
   toggleLlmSections(settings.llmMode);
   toggleSttSections(settings.sttMode);
+  renderDisabledSites(settings.disabledSites || []);
 });
+
+// ── Permissions Management ─────────────────────────
+function renderDisabledSites(sites) {
+  const container = $('#disabled-sites-list');
+  const emptyState = $('#disabled-sites-empty');
+  
+  container.innerHTML = '';
+  
+  if (!sites || sites.length === 0) {
+    emptyState.classList.remove('hidden');
+    container.classList.add('hidden');
+    return;
+  }
+  
+  emptyState.classList.add('hidden');
+  container.classList.remove('hidden');
+  
+  sites.forEach(domain => {
+    const li = document.createElement('li');
+    li.className = 'permission-item';
+    
+    const span = document.createElement('span');
+    span.className = 'permission-domain';
+    span.textContent = domain;
+    
+    const btn = document.createElement('button');
+    btn.className = 'btn-remove-site';
+    btn.textContent = 'Re-enable';
+    btn.title = `Allow TalkBro to run on ${domain}`;
+    
+    btn.addEventListener('click', () => removeDisabledSite(domain));
+    
+    li.appendChild(span);
+    li.appendChild(btn);
+    container.appendChild(li);
+  });
+}
+
+function removeDisabledSite(domainToRemove) {
+  chrome.storage.local.get({ disabledSites: [] }, (result) => {
+    const updatedSites = result.disabledSites.filter(d => d !== domainToRemove);
+    chrome.storage.local.set({ disabledSites: updatedSites }, () => {
+      renderDisabledSites(updatedSites);
+      
+      // Show save status briefly
+      const status = $('#save-status');
+      status.textContent = `✅ Re-enabled on ${domainToRemove}`;
+      status.classList.remove('hidden');
+      setTimeout(() => {
+        status.classList.add('hidden');
+        setTimeout(() => status.textContent = '✅ Saved!', 300); // Reset text
+      }, 2500);
+    });
+  });
+}
 
 // ── Toggle Sections Based on Mode ──────────────────
 $('#llm-mode').addEventListener('change', (e) => toggleLlmSections(e.target.value));
@@ -60,33 +116,6 @@ function toggleSttSections(mode) {
   }
 }
 
-// ── Check Ollama ───────────────────────────────────
-$('#check-ollama').addEventListener('click', checkOllama);
-
-async function checkOllama() {
-  const statusBadge = $('#ollama-status');
-  const statusText = statusBadge.querySelector('.status-text');
-  statusText.textContent = 'Checking...';
-  statusBadge.className = 'status-badge';
-
-  try {
-    const endpoint = $('#ollama-endpoint').value || 'http://localhost:11434';
-    const response = await fetch(`${endpoint}/api/tags`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      const models = (data.models || []).map(m => m.name);
-      statusBadge.classList.add('connected');
-      statusText.textContent = `Connected — ${models.length} model(s): ${models.slice(0, 3).join(', ')}`;
-    } else {
-      statusBadge.classList.add('disconnected');
-      statusText.textContent = 'Ollama not responding';
-    }
-  } catch {
-    statusBadge.classList.add('disconnected');
-    statusText.textContent = 'Cannot reach Ollama. Is it running?';
-  }
-}
 
 // ── Check On-Device Whisper Model ──────────────────
 $('#check-whisper').addEventListener('click', checkWhisperModel);
@@ -178,7 +207,6 @@ async function downloadWhisperModel() {
 }
 
 // Initial checks
-setTimeout(checkOllama, 500);
 setTimeout(checkWhisperModel, 800);
 
 // ── Toggle Password Visibility ─────────────────────
