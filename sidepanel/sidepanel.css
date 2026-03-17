@@ -3,25 +3,21 @@
    ═══════════════════════════════════════════════════ */
 
 :root {
-  --bg: #0d0d14;
-  --surface: #16162a;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #e8e8f0;
-  --text-muted: #8888a0;
-  --accent: #7c5cfc;
-  --accent-soft: rgba(124, 92, 252, 0.12);
-  --success: #34d399;
-  --font: 'Inter', system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f5f8;
-    --surface: #ffffff;
-    --border: rgba(0, 0, 0, 0.08);
-    --text: #1a1a2e;
-    --text-muted: #6b7280;
-  }
+  /* Paper Backgrounds */
+  --bg: #fdfbf7;
+  --surface: #ffffff;
+  
+  /* Ink Colors */
+  --border: #1a1a1a;
+  --text: #1a1a1a;
+  --text-muted: #5c5c5c;
+  --accent: #2c3e50;
+  --accent-soft: rgba(44, 62, 80, 0.05);
+  --success: #2e7d32;
+  
+  /* Typography */
+  --font: 'Georgia', 'Times New Roman', serif;
+  --font-mono: 'Courier New', Courier, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,10 +49,10 @@ body {
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 15px;
-  background: linear-gradient(135deg, var(--accent), #a78bfa);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-size: 16px;
+  color: var(--text);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .sp-logo svg { width: 20px; height: 20px; color: var(--accent); }
@@ -115,13 +111,14 @@ body {
 .history-item {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 4px;
   padding: 12px;
-  margin-bottom: 10px;
-  transition: border-color 0.2s;
+  margin-bottom: 12px;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+  transition: all 0.2s;
 }
 
-.history-item:hover { border-color: var(--accent); }
+.history-item:hover { transform: translateY(-1px); box-shadow: 3px 3px 0px rgba(0,0,0,0.15); }
 
 .history-meta {
   display: flex;
@@ -148,6 +145,7 @@ body {
 
 .history-raw {
   font-size: 12px;
+  font-family: var(--font-mono);
   color: var(--text-muted);
   margin-bottom: 6px;
   line-height: 1.4;
@@ -173,18 +171,17 @@ body {
 
 .history-copy-btn {
   padding: 4px 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: none;
-  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px dashed var(--border);
+  border-radius: 4px;
   font-family: var(--font);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .history-copy-btn:hover {
-  background: var(--accent);
-  color: white;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }

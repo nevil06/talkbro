@@ -8,7 +8,7 @@ html, body {
   background: transparent;
   overflow: hidden;
   user-select: none;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 /* ── Widget Container ────────────────────────────── */
@@ -26,18 +26,15 @@ html, body {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 2px solid rgba(124, 92, 252, 0.4);
-  background: rgba(15, 15, 30, 0.92);
-  backdrop-filter: blur(20px);
-  color: #a78bfa;
+  border: 1px solid #1a1a1a;
+  background: #fdfbf7;
+  color: #1a1a1a;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
   -webkit-app-region: no-drag;  /* Button itself is clickable, not draggable */
   position: relative;
 }
@@ -45,21 +42,18 @@ html, body {
 .mic-btn svg {
   width: 24px;
   height: 24px;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .mic-btn:hover {
-  transform: scale(1.1);
-  border-color: #7c5cfc;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(124, 92, 252, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-  color: #c4b5fd;
+  transform: translateY(-2px);
+  background: #ffffff;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.15);
 }
 
 .mic-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0);
+  box-shadow: 1px 1px 0px rgba(0,0,0,0.1);
 }
 
 /* ── Idle State ──────────────────────────────────── */
@@ -74,32 +68,30 @@ html, body {
 
 /* ── Recording State ─────────────────────────────── */
 .widget.recording .mic-btn {
-  background: rgba(220, 38, 38, 0.9);
-  border-color: rgba(248, 113, 113, 0.6);
-  color: white;
+  background: #ffffff;
+  border-color: #c62828;
+  color: #c62828;
   animation: pulse-record 1.5s ease-in-out infinite;
-  box-shadow:
-    0 4px 24px rgba(220, 38, 38, 0.4),
-    0 0 30px rgba(248, 113, 113, 0.2);
+  box-shadow: 2px 2px 0px rgba(198, 40, 40, 0.2);
 }
 
 @keyframes pulse-record {
   0%, 100% {
-    box-shadow: 0 4px 24px rgba(220, 38, 38, 0.4), 0 0 30px rgba(248, 113, 113, 0.2);
-    transform: scale(1);
+    box-shadow: 2px 2px 0px rgba(198, 40, 40, 0.2);
   }
   50% {
-    box-shadow: 0 4px 32px rgba(220, 38, 38, 0.6), 0 0 50px rgba(248, 113, 113, 0.3);
-    transform: scale(1.05);
+    box-shadow: 4px 4px 0px rgba(198, 40, 40, 0.4);
+    transform: translateY(-1px);
   }
 }
 
 /* ── Processing State ────────────────────────────── */
 .widget.processing .mic-btn {
-  background: rgba(15, 15, 30, 0.95);
-  border-color: rgba(124, 92, 252, 0.6);
-  color: #7c5cfc;
+  background: #f4f0ec;
+  border-color: #2c3e50;
+  color: #2c3e50;
   pointer-events: none;
+  box-shadow: none;
 }
 
 .widget.processing #mic-icon { display: none; }
@@ -119,22 +111,22 @@ html, body {
 
 /* ── Status Text ─────────────────────────────────── */
 .status {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  color: #a78bfa;
-  background: rgba(15, 15, 30, 0.88);
-  backdrop-filter: blur(12px);
+  color: #1a1a1a;
+  background: #ffffff;
   padding: 4px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(124, 92, 252, 0.2);
+  border-radius: 4px;
+  border: 1px solid #1a1a1a;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
   white-space: nowrap;
   animation: fadeIn 0.2s ease;
 }
 
 .status.hidden { display: none; }
 
-.widget.recording .status { color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
-.widget.processing .status { color: #a78bfa; }
+.widget.recording .status { color: #c62828; border-color: #c62828; }
+.widget.processing .status { color: #2c3e50; border-style: dashed; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
@@ -142,9 +134,9 @@ html, body {
 .waveform {
   width: 180px;
   height: 32px;
-  border-radius: 8px;
-  background: rgba(15, 15, 30, 0.7);
-  border: 1px solid rgba(124, 92, 252, 0.15);
+  border-radius: 4px;
+  background: #fdfbf7;
+  border: 1px dashed #1a1a1a;
 }
 
 .waveform.hidden { display: none; }
