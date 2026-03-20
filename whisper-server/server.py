@@ -1,7 +1,7 @@
 """
 TalkBro — Local Whisper Server
-A lightweight Flask server that runs OpenAI Whisper for local speech-to-text.
-The Chrome extension sends audio to this server for transcription.
+A lightweight Flask server that runs OpenAI Whisper for local speech-to-text
+and uses Nvidia's DeepSeek API for text enhancement.
 """
 
 from flask import Flask, request, jsonify
@@ -9,65 +9,80 @@ from flask_cors import CORS
 import whisper
 import tempfile
 import os
-import sys
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from Chrome extension
 
-# Load model on startup (cached after first load)
+# Load Whisper model on startup (cached after first load)
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")
 print(f"[TalkBro] Loading Whisper model: {MODEL_SIZE}...")
 model = whisper.load_model(MODEL_SIZE)
 print(f"[TalkBro] Whisper model '{MODEL_SIZE}' loaded successfully!")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 1. Look specifically in the 'model' subdirectory
-LLM_DIR = os.path.join(BASE_DIR, "model")
+# Nvidia API configuration
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
+NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-print(f"[TalkBro] Checking for local DeepSeek/Qwen model in: {LLM_DIR}")
+# Ollama configuration (fallback)
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "mistral")
 
-LLM_AVAILABLE = False
-tokenizer = None
-llm_model = None
+# Print configuration status
+print("\n" + "="*60)
+print("TEXT ENHANCEMENT CONFIGURATION")
+print("="*60)
 
-try:
-    if not os.path.exists(os.path.join(LLM_DIR, "config.json")):
-        raise FileNotFoundError(f"Missing config.json in {LLM_DIR}. You must place all HuggingFace model files (tokenizer.json, config.json, model.safetensors, etc.) into the 'model' subfolder.")
-    
-    # 2. Setup Device (Forced to CPU and float32 per request)
-    print(f"[TalkBro] Loading tokenizer from {LLM_DIR}...")
-    tokenizer = AutoTokenizer.from_pretrained(LLM_DIR, local_files_only=True)
-    
-    print(f"[TalkBro] Loading LLM from {LLM_DIR} to CPU (this may take a moment)...")
-    llm_model = AutoModelForCausalLM.from_pretrained(
-        LLM_DIR, 
-        local_files_only=True,
-        torch_dtype=torch.float32, 
-        device_map="cpu",
-        low_cpu_mem_usage=True
-    )
-        
-    print("[TalkBro] ✅ Local LLM loaded successfully and is ready for text enhancement!")
-    LLM_AVAILABLE = True
-except Exception as e:
-    print("\n[TalkBro] ❌ ERROR: Could not load local LLM. Detailed error below:")
-    print("-" * 50)
-    import traceback
-    traceback.print_exc()
-    print("-" * 50)
-    print(f"Please ensure you have placed all necessary Hugging Face model files in the '{LLM_DIR}' directory.\n")
-    LLM_AVAILABLE = False
+if NVIDIA_API_KEY:
+    print("✅ Nvidia DeepSeek API: Configured (Primary)")
+    print(f"   API Key: {NVIDIA_API_KEY[:15]}...{NVIDIA_API_KEY[-4:]}")
+else:
+    print("⚠️  Nvidia DeepSeek API: Not configured")
+    print("   Set NVIDIA_API_KEY environment variable to enable")
+
+print(f"\n🔄 Ollama Fallback: {OLLAMA_URL}")
+print(f"   Model: {OLLAMA_MODEL}")
+print(f"   Status: Will be used if Nvidia API fails")
+
+if not NVIDIA_API_KEY:
+    print("\n⚠️  WARNING: No primary LLM configured!")
+    print("   Text enhancement will only work if Ollama is running.")
+    print("   Start Ollama: 'ollama serve'")
+    print(f"   Pull model: 'ollama pull {OLLAMA_MODEL}'")
+
+print("="*60 + "\n")
 
 @app.route("/health", methods=["GET"])
 def health():
-    """Health check endpoint."""
+    """Health check endpoint with service status."""
+    # Check Ollama availability
+    ollama_available = False
+    try:
+        response = requests.get(f"{OLLAMA_URL}/api/tags", timeout=2)
+        ollama_available = response.ok
+    except:
+        pass
+    
     return jsonify({
         "status": "ok",
-        "model": MODEL_SIZE,
-        "model_loaded": LLM_AVAILABLE,
-        "service": "TalkBro Whisper Server"
+        "whisper_model": MODEL_SIZE,
+        "service": "TalkBro Whisper Server",
+        "enhancement": {
+            "nvidia": {
+                "configured": bool(NVIDIA_API_KEY),
+                "status": "primary" if NVIDIA_API_KEY else "not_configured"
+            },
+            "ollama": {
+                "url": OLLAMA_URL,
+                "model": OLLAMA_MODEL,
+                "available": ollama_available,
+                "status": "fallback" if NVIDIA_API_KEY else "primary"
+            }
+        }
     })
 
 
@@ -146,11 +161,10 @@ def list_models():
 
 @app.route("/enhance", methods=["POST"])
 def enhance():
-    """Enhance text using the local LLM."""
-    if not LLM_AVAILABLE:
-        print("[TalkBro] Request to /enhance denied: Local LLM is not loaded.")
-        return jsonify({"error": "Local LLM is not loaded. Please check the server console for startup errors."}), 503
-
+    """
+    Enhance text using Nvidia's DeepSeek API with Ollama fallback.
+    Tries Nvidia first, falls back to local Ollama if it fails.
+    """
     data = request.json
     if not data or "text" not in data:
         return jsonify({"error": "No text provided"}), 400
@@ -158,43 +172,170 @@ def enhance():
     system_prompt = data.get("systemPrompt", "You are a helpful assistant.")
     user_text = data.get("text", "")
 
-    print(f"[TalkBro] Enhancing text using local LLM (Input length: {len(user_text)} characters)...")
+    print(f"[TalkBro] Enhancing text (Input length: {len(user_text)} characters)...")
 
-    # Format prompt (simple context format, adjust depending on exact model family: Qwen/DeepSeek/Llama)
-    prompt = f"<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{user_text}<|im_end|>\n<|im_start|>assistant\n"
+    # Track which services we've tried
+    nvidia_error = None
+    ollama_error = None
+
+    # ═══════════════════════════════════════════════════
+    # TRY 1: Nvidia DeepSeek API (Primary)
+    # ═══════════════════════════════════════════════════
+    if NVIDIA_API_KEY:
+        print("[TalkBro] 🔵 Attempting Nvidia DeepSeek API...")
+        try:
+            headers = {
+                "Authorization": f"Bearer {NVIDIA_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": "deepseek/deepseek-r1",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1024,
+                "stream": False
+            }
+            
+            response = requests.post(NVIDIA_API_URL, headers=headers, json=payload, timeout=30)
+            
+            if response.ok:
+                result = response.json()
+                enhanced_text = result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                
+                if enhanced_text:
+                    print("[TalkBro] ✅ Enhancement complete via Nvidia DeepSeek API")
+                    return jsonify({
+                        "success": True,
+                        "enhanced_text": enhanced_text,
+                        "provider": "nvidia"
+                    })
+                else:
+                    nvidia_error = "Empty response from Nvidia API"
+                    print(f"[TalkBro] ⚠️  Nvidia API returned empty response")
+            else:
+                # Extract error message
+                try:
+                    error_data = response.json()
+                    nvidia_error = error_data.get("error", {}).get("message", f"HTTP {response.status_code}")
+                except:
+                    nvidia_error = f"HTTP {response.status_code}: {response.text[:100]}"
+                
+                print(f"[TalkBro] ⚠️  Nvidia API error: {nvidia_error}")
+        
+        except requests.exceptions.Timeout:
+            nvidia_error = "Request timed out after 30 seconds"
+            print(f"[TalkBro] ⚠️  Nvidia API timeout: {nvidia_error}")
+        
+        except requests.exceptions.ConnectionError as e:
+            nvidia_error = f"Connection failed: {str(e)[:100]}"
+            print(f"[TalkBro] ⚠️  Nvidia API connection error: {nvidia_error}")
+        
+        except Exception as e:
+            nvidia_error = f"Unexpected error: {str(e)[:100]}"
+            print(f"[TalkBro] ⚠️  Nvidia API unexpected error: {nvidia_error}")
+    else:
+        nvidia_error = "NVIDIA_API_KEY not configured"
+        print("[TalkBro] ⚠️  Nvidia API key not set, skipping...")
+
+    # ═══════════════════════════════════════════════════
+    # TRY 2: Ollama Fallback (Secondary)
+    # ═══════════════════════════════════════════════════
+    print("[TalkBro] 🟢 Falling back to Ollama (mistral)...")
+    
+    ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    ollama_model = os.environ.get("OLLAMA_MODEL", "mistral")
     
     try:
-        # Determine device where the model is loaded
-        device = next(llm_model.parameters()).device
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        # Combine system prompt and user text for Ollama's generate endpoint
+        combined_prompt = f"{system_prompt}\n\nText to enhance:\n{user_text}\n\nEnhanced text:"
         
-        # Generation kwargs
-        generate_kwargs = {
-            "max_new_tokens": 1024,
-            "temperature": 0.3,
-            "do_sample": True,
+        payload = {
+            "model": ollama_model,
+            "prompt": combined_prompt,
+            "stream": False,
+            "options": {
+                "temperature": 0.3,
+                "num_predict": 1024
+            }
         }
         
-        # Gracefully handle EOS/PAD tokens
-        if tokenizer.pad_token_id is not None:
-            generate_kwargs["pad_token_id"] = tokenizer.pad_token_id
-        elif tokenizer.eos_token_id is not None:
-            generate_kwargs["pad_token_id"] = tokenizer.eos_token_id
-
-        outputs = llm_model.generate(**inputs, **generate_kwargs)
+        response = requests.post(
+            f"{ollama_url}/api/generate",
+            json=payload,
+            timeout=60  # Ollama can be slower on CPU
+        )
         
-        # Decode only the generated response
-        generated_tokens = outputs[0][inputs.input_ids.shape[1]:]
-        response_text = tokenizer.decode(generated_tokens, skip_special_tokens=True).strip()
-
-        print("[TalkBro] Enhancement complete!")
-        return jsonify({
-            "success": True,
-            "enhanced_text": response_text
-        })
+        if response.ok:
+            result = response.json()
+            enhanced_text = result.get("response", "").strip()
+            
+            if enhanced_text:
+                print(f"[TalkBro] ✅ Enhancement complete via Ollama ({ollama_model})")
+                return jsonify({
+                    "success": True,
+                    "enhanced_text": enhanced_text,
+                    "provider": "ollama",
+                    "model": ollama_model,
+                    "note": f"Nvidia API failed ({nvidia_error}), used Ollama fallback"
+                })
+            else:
+                ollama_error = "Empty response from Ollama"
+                print(f"[TalkBro] ⚠️  Ollama returned empty response")
+        else:
+            try:
+                error_data = response.json()
+                ollama_error = error_data.get("error", f"HTTP {response.status_code}")
+            except:
+                ollama_error = f"HTTP {response.status_code}: {response.text[:100]}"
+            
+            print(f"[TalkBro] ⚠️  Ollama error: {ollama_error}")
+    
+    except requests.exceptions.Timeout:
+        ollama_error = "Request timed out after 60 seconds"
+        print(f"[TalkBro] ⚠️  Ollama timeout: {ollama_error}")
+    
+    except requests.exceptions.ConnectionError as e:
+        ollama_error = f"Connection failed - is Ollama running? ({str(e)[:100]})"
+        print(f"[TalkBro] ⚠️  Ollama connection error: {ollama_error}")
+    
     except Exception as e:
-        print(f"[TalkBro] ❌ Inference Error during /enhance: {e}")
-        return jsonify({"error": f"LLM Inference failed: {str(e)}"}), 500
+        ollama_error = f"Unexpected error: {str(e)[:100]}"
+        print(f"[TalkBro] ⚠️  Ollama unexpected error: {ollama_error}")
+
+    # ═══════════════════════════════════════════════════
+    # BOTH FAILED - Return Detailed Error
+    # ═══════════════════════════════════════════════════
+    print("[TalkBro] ❌ All enhancement services failed")
+    
+    error_details = {
+        "nvidia": nvidia_error,
+        "ollama": ollama_error
+    }
+    
+    # Build helpful error message
+    error_message = "Text enhancement failed. Both services are unavailable:\n\n"
+    
+    if nvidia_error:
+        error_message += f"• Nvidia API: {nvidia_error}\n"
+    
+    if ollama_error:
+        error_message += f"• Ollama: {ollama_error}\n"
+    
+    error_message += "\nTroubleshooting:\n"
+    error_message += "1. Check your NVIDIA_API_KEY environment variable\n"
+    error_message += "2. Ensure Ollama is running: 'ollama serve'\n"
+    error_message += f"3. Verify Ollama has the '{ollama_model}' model: 'ollama pull {ollama_model}'\n"
+    error_message += "4. Check your internet connection for Nvidia API"
+    
+    return jsonify({
+        "success": False,
+        "error": error_message,
+        "details": error_details
+    }), 503
 
 
 if __name__ == "__main__":

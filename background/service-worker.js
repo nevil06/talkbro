@@ -122,7 +122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Enhance text using the local DeepSeek server backend.
+ * Enhance text using the local server with Nvidia/Ollama fallback.
  */
 async function handleEnhance(rawText, preset) {
   const settings = await getSettings();
@@ -139,18 +139,32 @@ async function handleEnhance(rawText, preset) {
     });
 
     if (!response.ok) {
-      let errMsg = `Local server error: ${response.status}`;
+      let errMsg = `Server error: ${response.status}`;
       try {
         const err = await response.json();
+        // Handle the detailed error from the server
         errMsg = err.error || errMsg;
       } catch (e) {}
       throw new Error(errMsg);
     }
 
     const data = await response.json();
+    
+    // Log which provider was used
+    if (data.provider) {
+      console.log(`[TalkBro] Text enhanced via ${data.provider}`);
+      if (data.note) {
+        console.log(`[TalkBro] Note: ${data.note}`);
+      }
+    }
+    
     return data.enhanced_text || '';
   } catch (err) {
-    throw new Error(`Failed to reach local enhancement server. Is the Python server running? (${err.message})`);
+    // Check if it's a network error (server not running)
+    if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+      throw new Error('Cannot connect to TalkBro server. Please start the server:\n\n1. Open terminal in whisper-server folder\n2. Run: python server.py\n\nSee whisper-server/QUICKSTART.md for help.');
+    }
+    throw new Error(err.message);
   }
 }
 

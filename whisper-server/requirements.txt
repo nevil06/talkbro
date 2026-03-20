@@ -1,6 +1,5 @@
 openai-whisper
 flask
 flask-cors
-torch
-transformers
-accelerate
+requests
+python-dotenv

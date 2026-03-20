@@ -1,0 +1,19 @@
+# Environment variables (contains API keys)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Whisper model cache
+~/.cache/whisper/
+
+# Temporary files
+*.tmp
+*.log
