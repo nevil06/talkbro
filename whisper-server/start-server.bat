@@ -4,8 +4,15 @@ echo TalkBro Whisper Server Startup
 echo ========================================
 echo.
 
-REM Set the API key (replace with your actual key)
-set NVIDIA_API_KEY=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
+REM Set the API key from .env file or set it here temporarily
+REM set NVIDIA_API_KEY=your-api-key-here
+
+REM Load from .env file (recommended)
+if exist .env (
+    for /f "tokens=1,2 delims==" %%a in (.env) do (
+        if "%%a"=="NVIDIA_API_KEY" set NVIDIA_API_KEY=%%b
+    )
+)
 
 REM Optional: Set custom Whisper model size
 REM set WHISPER_MODEL=tiny
