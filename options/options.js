@@ -4,13 +4,9 @@
 
 const DEFAULTS = {
   sttMode: 'local',
-  llmMode: 'local',
-  ollamaModel: 'mistral',
-  ollamaEndpoint: 'http://localhost:11434',
   whisperModel: 'tiny',
   openaiApiKey: '',
-  groqApiKey: '',
-  openrouterApiKey: '',
+  geminiApiKey: '',
   enhancementPreset: 'clean',
   silenceTimeout: 2000,
   theme: 'auto'
@@ -21,18 +17,13 @@ const $ = (sel) => document.querySelector(sel);
 // ── Load Settings ──────────────────────────────────
 chrome.storage.local.get(DEFAULTS, (settings) => {
   $('#stt-mode').value = settings.sttMode;
-  $('#llm-mode').value = settings.llmMode;
-  $('#ollama-endpoint').value = settings.ollamaEndpoint;
-  $('#ollama-model').value = settings.ollamaModel;
   $('#whisper-model').value = settings.whisperModel;
   $('#openai-key').value = settings.openaiApiKey;
-  $('#groq-key').value = settings.groqApiKey;
-  $('#openrouter-key').value = settings.openrouterApiKey;
+  $('#gemini-key').value = settings.geminiApiKey;
   $('#preset').value = settings.enhancementPreset;
   $('#silence-timeout').value = settings.silenceTimeout / 1000;
   $('#theme').value = settings.theme;
 
-  toggleLlmSections(settings.llmMode);
   toggleSttSections(settings.sttMode);
   renderDisabledSites(settings.disabledSites || []);
 });
@@ -93,18 +84,7 @@ function removeDisabledSite(domainToRemove) {
 }
 
 // ── Toggle Sections Based on Mode ──────────────────
-$('#llm-mode').addEventListener('change', (e) => toggleLlmSections(e.target.value));
 $('#stt-mode').addEventListener('change', (e) => toggleSttSections(e.target.value));
-
-function toggleLlmSections(mode) {
-  if (mode === 'local') {
-    $('#ollama-settings').classList.remove('hidden');
-    $('#remote-llm-settings').classList.add('hidden');
-  } else {
-    $('#ollama-settings').classList.add('hidden');
-    $('#remote-llm-settings').classList.remove('hidden');
-  }
-}
 
 function toggleSttSections(mode) {
   if (mode === 'local') {
@@ -222,13 +202,9 @@ document.querySelectorAll('.toggle-visibility').forEach(btn => {
 $('#save-btn').addEventListener('click', () => {
   const settings = {
     sttMode: $('#stt-mode').value,
-    llmMode: $('#llm-mode').value,
-    ollamaEndpoint: $('#ollama-endpoint').value,
-    ollamaModel: $('#ollama-model').value,
     whisperModel: $('#whisper-model').value,
     openaiApiKey: $('#openai-key').value,
-    groqApiKey: $('#groq-key').value,
-    openrouterApiKey: $('#openrouter-key').value,
+    geminiApiKey: $('#gemini-key').value,
     enhancementPreset: $('#preset').value,
     silenceTimeout: parseFloat($('#silence-timeout').value) * 1000,
     theme: $('#theme').value

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TalkBro",
   "version": "1.0.0",
-  "description": "A floating voice companion — speak naturally, get polished text. Powered by Whisper & open-source LLMs.",
+  "description": "A floating voice companion — speak naturally, get polished text. Powered by Whisper & Google Gemini.",
   "permissions": [
     "activeTab",
     "sidePanel",
@@ -10,8 +10,7 @@
     "offscreen"
   ],
   "host_permissions": [
-    "http://localhost:11434/*",
-    "http://localhost:5555/*",
+    "https://generativelanguage.googleapis.com/*",
     "https://huggingface.co/*",
     "https://cdn-lfs.huggingface.co/*"
   ],

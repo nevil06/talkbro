@@ -122,49 +122,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * Enhance text using the local server with Nvidia/Ollama fallback.
+ * Enhance text using Google Gemini API (free tier).
  */
 async function handleEnhance(rawText, preset) {
   const settings = await getSettings();
+  const apiKey = settings.geminiApiKey;
+
+  if (!apiKey) {
+    throw new Error('Gemini API key not set. Open TalkBro Settings to add your free key from aistudio.google.com/apikey');
+  }
+
   const presetConfig = getPreset(preset || settings.enhancementPreset);
+  const prompt = `${presetConfig.prompt}\n\nText to enhance:\n${rawText}`;
 
   try {
-    const response = await fetch('http://localhost:5555/enhance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemPrompt: presetConfig.prompt,
-        text: rawText
-      })
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 2048
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
-      let errMsg = `Server error: ${response.status}`;
-      try {
-        const err = await response.json();
-        // Handle the detailed error from the server
-        errMsg = err.error || errMsg;
-      } catch (e) {}
-      throw new Error(errMsg);
+      const errData = await response.json().catch(() => ({}));
+      const message = errData.error?.message || `Gemini API error (${response.status})`;
+      throw new Error(message);
     }
 
     const data = await response.json();
-    
-    // Log which provider was used
-    if (data.provider) {
-      console.log(`[TalkBro] Text enhanced via ${data.provider}`);
-      if (data.note) {
-        console.log(`[TalkBro] Note: ${data.note}`);
-      }
+    const enhanced = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+    if (!enhanced) {
+      throw new Error('Gemini returned an empty response. Please try again.');
     }
-    
-    return data.enhanced_text || '';
+
+    console.log('[TalkBro] Text enhanced via Gemini API');
+    return enhanced;
   } catch (err) {
-    // Check if it's a network error (server not running)
     if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-      throw new Error('Cannot connect to TalkBro server. Please start the server:\n\n1. Open terminal in whisper-server folder\n2. Run: python server.py\n\nSee whisper-server/QUICKSTART.md for help.');
+      throw new Error('Cannot reach Gemini API. Check your internet connection.');
     }
-    throw new Error(err.message);
+    throw err;
   }
 }
 

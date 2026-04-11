@@ -4,14 +4,15 @@
  */
 
 const DEFAULTS = {
-  sttMode: 'local',         // 'local' (on-device Whisper) or 'remote' (OpenAI API)
-  whisperModel: 'tiny',     // 'tiny' (~39MB) or 'base' (~74MB)
-  openaiApiKey: '',
-  enhancementPreset: 'clean',  // clean | formal | bullets | email | code
-  silenceTimeout: 2000,        // ms of silence before auto-stop
-  theme: 'auto',               // auto | dark | light
+  sttMode: 'local',            // 'local' (on-device Whisper) or 'remote' (OpenAI API)
+  whisperModel: 'tiny',        // 'tiny' (~39MB) or 'base' (~74MB)
+  openaiApiKey: '',             // OpenAI key for remote Whisper STT only
+  geminiApiKey: '',             // Google Gemini API key for text enhancement
+  enhancementPreset: 'clean',   // clean | formal | bullets | email | code | summary
+  silenceTimeout: 2000,         // ms of silence before auto-stop
+  theme: 'auto',                // auto | dark | light
   panelPosition: { x: null, y: null },
-  disabledSites: [],           // domain list where TalkBro is hidden
+  disabledSites: [],            // domain list where TalkBro is hidden
   history: []
 };
 

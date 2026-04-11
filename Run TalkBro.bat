@@ -1,25 +1,22 @@
 @echo off
-TITLE TalkBro Server
+TITLE TalkBro
 echo ===================================================
-echo               Starting TalkBro
+echo               TalkBro — Voice Companion
 echo ===================================================
 echo.
-
-:: Navigate to the correct folder
-cd /d "c:\Users\nevil\OneDrive\Documents\Desktop\talkbro\whisper-server"
-
-:: Check if virtual environment exists and activate it
-if exist "venv\Scripts\activate.bat" (
-    echo Activating virtual environment...
-    call venv\Scripts\activate.bat
-) else (
-    echo Warning: Virtual environment not found! 
-    echo Ensure you have run start.bat at least once to install dependencies.
-)
-
-:: Run the server
-echo Starting the Python server...
-python server.py
-
-:: Keep the window open if it crashes or stops
+echo  TalkBro is now a fully client-side Chrome extension.
+echo  No server required!
+echo.
+echo  To use TalkBro:
+echo    1. Open Chrome and go to chrome://extensions
+echo    2. Enable Developer Mode (top-right toggle)
+echo    3. Click "Load unpacked" and select this folder
+echo    4. Open TalkBro Settings and enter your Gemini API key
+echo       (free from https://aistudio.google.com/apikey)
+echo    5. Navigate to any page with text inputs and start talking!
+echo.
+echo  Keyboard shortcuts:
+echo    Alt+T  — Toggle panel
+echo    Alt+R  — Start/Stop recording
+echo.
 pause
